@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model House {
+  id        String   @id @default(uuid())
+  name      String
+  users     User[]
+  items     Item[]
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  name       String
+  houseId    String?
+  house      House?   @relation(fields: [houseId], references: [id])
+  addedItems Item[]   @relation("UserItems")
+  createdAt  DateTime @default(now())
+}
+
+model Item {
+  id        String   @id @default(uuid())
+  name      String
+  isBought  Boolean  @default(false)
+  houseId   String
+  house     House    @relation(fields: [houseId], references: [id])
+  addedById String?
+  addedBy   User?    @relation("UserItems", fields: [addedById], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
