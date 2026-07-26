@@ -19,8 +19,6 @@ const io = new Server(httpServer, {
   }
 });
 
-const path = require('path');
-
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
