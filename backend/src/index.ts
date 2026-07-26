@@ -94,7 +94,7 @@ const frontendPath = path.join(__dirname, '../../frontend/dist');
 app.use(express.static(frontendPath));
 
 // 3. Redirigimos cualquier ruta no reconocida al index.html de React
-app.get('(.*)', (req, res) => {
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
