@@ -29,49 +29,6 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// --- ENDPOINTS BÁSICOS (API REST) ---
-
-// Ruta de prueba
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'El servidor está funcionando' });
-});
-
-// --- RUTAS PARA CASAS ---
-
-// Crear una nueva casa
-app.post('/api/houses', async (req, res) => {
-  try {
-    const { name } = req.body;
-    const newHouse = await prisma.house.create({
-      data: { name }
-    });
-    res.status(201).json(newHouse);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al crear la casa' });
-  }
-});
-
-// --- RUTAS PARA USUARIOS ---
-
-// Crear un usuario y unirlo (opcionalmente) a una casa
-app.post('/api/users', async (req, res) => {
-  try {
-    const { email, name, houseId } = req.body;
-    const newUser = await prisma.user.create({
-      data: { 
-        email, 
-        name, 
-        houseId 
-      }
-    });
-    res.status(201).json(newUser);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al crear el usuario. ¿Quizás el email ya existe?' });
-  }
-});
-
 // Obtener todos los artículos de una casa
 app.get('/api/houses/:houseId/items', async (req, res) => {
   try {

@@ -2,51 +2,45 @@ import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
 
 interface ShoppingItem {
-  id: string; // (o number, dependiendo de cómo lo genere tu base de datos)
+  id: string; 
   name: string;
   isBought?: boolean;
 }
 
-// Conectamos con nuestro backend (puerto 3000)
+// Conectamos con nuestro backend de Render
 const socket = io()
 
 function App() {
-  // ¡Pon aquí el ID real de tu casa!
   const [houseId] = useState('a513962b-c0c9-446f-bf70-2684f545b4dd')
   const [items, setItems] = useState<ShoppingItem[]>([])
   const [newItemName, setNewItemName] = useState('')
 
   useEffect(() => {
-    // 1. Al cargar la app, nos unimos a la "sala" de esta casa
+    // 1. Nos unimos a la "sala" de esta casa
     socket.emit('joinHouse', houseId)
 
-    // 2. Pedimos los artículos que ya existen por API REST
-    fetch(`/api/houses/${houseId}`)
-      .then(res => res.json())
+    // 2. CORREGIDO: Añadido /items al final de la ruta
+    fetch(`/api/houses/${houseId}/items`)
+      .then(res => {
+        if (!res.ok) throw new Error("Error en la respuesta del servidor")
+        return res.json()
+      })
       .then(data => setItems(data))
       .catch(err => console.error("Error cargando items:", err))
 
-    // 3. Escuchamos activamente si alguien añade un artículo
+    // 3. Escuchamos activamente
     socket.on('itemAdded', (newItem) => {
-      // Añadimos el nuevo artículo al principio de la lista actual
       setItems((prevItems) => [newItem, ...prevItems])
     })
 
-    // Añade esto debajo de socket.on('itemAdded', ...)
     socket.on('itemDeleted', (deletedItemId) => {
-      // Filtramos la lista para quedarnos con todos MENOS el que acaban de borrar
       setItems((prevItems) => prevItems.filter(item => item.id !== deletedItemId))
     })
 
-    // Y recuerda limpiar el evento en el return:
+    // 4. CORREGIDO: Un solo return para limpiar los eventos
     return () => {
       socket.off('itemAdded')
-      socket.off('itemDeleted') // <-- Añadir esta línea
-    }
-
-    // Limpieza al cerrar el componente
-    return () => {
-      socket.off('itemAdded')
+      socket.off('itemDeleted')
     }
   }, [houseId])
 
@@ -54,30 +48,18 @@ function App() {
     e.preventDefault()
     if (!newItemName.trim()) return
 
-    // Enviamos el artículo al backend por WebSocket
     socket.emit('addItem', {
       name: newItemName,
       houseId: houseId,
-      // addedById: "TU_USER_ID" // Opcional por ahora, lo dejamos vacío
     })
     
-    setNewItemName('') // Limpiamos el input
+    setNewItemName('')
   }
 
-  const handleDeleteItem = async (itemId: string) => {
-  // Opcion A: Si borras a través de REST
-  try {
-    await fetch(`/api/houses/${houseId}/items/${itemId}`, {
-      method: 'DELETE'
-    });
-    // La lista se actualizará automáticamente si tienes el socket escuchando el evento de borrado
-  } catch (error) {
-    console.error("Error al borrar el producto:", error);
-  }
-
-  // Opcion B: Si borras directamente emitiendo un evento por WebSockets
-  // socket.emit('deleteItem', { houseId, itemId });
-};
+  const handleDeleteItem = (itemId: string) => {
+    // CORREGIDO: Usamos la Opción B (WebSockets) que es la que configuraste en el backend
+    socket.emit('deleteItem', { houseId, itemId });
+  };
 
   return (
     <div style={{ maxWidth: '500px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' }}>
@@ -102,14 +84,12 @@ function App() {
             
             <span>{item.name}</span>
             
-            {/* Botón para eliminar */}
             <button 
               onClick={() => handleDeleteItem(item.id)}
               style={{ background: '#ff4d4d', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
             >
               🗑️ Borrar
             </button>
-
           </li>
         ))}
       </ul>
