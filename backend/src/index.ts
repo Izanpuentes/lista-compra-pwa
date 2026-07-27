@@ -83,12 +83,21 @@ io.on('connection', (socket) => {
 
   socket.on('addItem', async (data) => {
     try {
-      const { name, houseId, addedById } = data;
+      // Extraemos también el supermercado de los datos que envía React
+      const { name, houseId, addedById, supermercado } = data;
+      
       const newItem = await prisma.item.create({
-        data: { name, houseId, addedById },
+        data: { 
+          name, 
+          houseId, 
+          addedById,
+          supermercado // Lo guardamos en la base de datos
+        },
         include: { addedBy: true } 
       });
+
       io.to(houseId).emit('itemAdded', newItem);
+      
     } catch (error) {
       console.error("Error al añadir item por WebSocket:", error);
     }

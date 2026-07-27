@@ -26,13 +26,14 @@ model User {
 }
 
 model Item {
-  id        String   @id @default(uuid())
-  name      String
-  houseId   String
-  house     House    @relation(fields: [houseId], references: [id])
-  addedById String?
-  addedBy   User?    @relation("UserItems", fields: [addedById], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  comprado Boolean @default(false)
+  id           String   @id @default(uuid())
+  name         String
+  houseId      String
+  house        House    @relation(fields: [houseId], references: [id])
+  addedById    String?
+  addedBy      User?    @relation("UserItems", fields: [addedById], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  comprado     Boolean  @default(false)
+  supermercado String   @default("general") // <-- NUEVO CAMPO
 }
