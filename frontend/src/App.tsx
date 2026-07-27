@@ -224,45 +224,61 @@ function App() {
             </div>
             
             <form onSubmit={handleAddItem} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              {/* Primera fila: Input de texto y botón de voz juntos */}
+              <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
                 <input 
                   type="text" 
                   value={newItemName}
                   onChange={handleNameChange}
                   placeholder={`Añadir a ${activeSupermarket}...`} 
-                  style={{ flex: 1, padding: '10px', fontSize: '16px', borderRadius: '8px', border: '1px solid #ccc', WebkitAppearance: 'none' }}
+                  style={{ flex: 1, padding: '12px', fontSize: '16px', borderRadius: '8px', border: '1px solid #ccc', WebkitAppearance: 'none', minWidth: 0 }}
                 />
                 
-                {/* --- BOTÓN DE MICRÓFONO --- */}
-                {/* --- BOTÓN DE MICRÓFONO --- */}
+                {/* Botón de Micrófono */}
                 <button 
                   type="button" 
-                  onClick={toggleListening} // <-- AHORA LLAMA A LA NUEVA FUNCIÓN
+                  onClick={toggleListening} 
                   style={{ 
                     WebkitAppearance: 'none', 
-                    padding: '10px 15px', 
+                    padding: '12px 15px', 
                     fontSize: '20px', 
                     cursor: 'pointer', 
                     backgroundColor: isListening ? '#ff4d4f' : '#e0e0e0',
                     color: isListening ? 'white' : 'black', 
                     border: '1px solid #ccc', 
                     borderRadius: '8px',
+                    flexShrink: 0,
                     transition: 'all 0.3s ease'
                   }}
                   title="Dictar por voz"
                 >
                   {isListening ? '🔴' : '🎙️'}
                 </button>
-
-                <button type="submit" style={{ WebkitAppearance: 'none', padding: '10px 15px', fontSize: '16px', cursor: 'pointer', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '8px' }}>
-                  Añadir
-                </button>
               </div>
+
+              {/* Segunda fila: Botón de Añadir a lo ancho completo para que nunca se corte */}
+              <button 
+                type="submit" 
+                style={{ 
+                  WebkitAppearance: 'none', 
+                  padding: '12px', 
+                  fontSize: '16px', 
+                  cursor: 'pointer', 
+                  backgroundColor: '#28a745', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '8px', 
+                  fontWeight: 'bold',
+                  width: '100%'
+                }}
+              >
+                ➕ Añadir a la lista
+              </button>
               
               <select 
                 value={newItemCategory} 
                 onChange={(e) => setNewItemCategory(e.target.value)}
-                style={{ padding: '10px', fontSize: '16px', borderRadius: '8px', border: '1px solid #ccc', WebkitAppearance: 'none', backgroundColor: '#fff', color: '#000' }}
+                style={{ padding: '12px', fontSize: '16px', borderRadius: '8px', border: '1px solid #ccc', WebkitAppearance: 'none', backgroundColor: '#fff', color: '#000', width: '100%' }}
               >
                 {RUTAS_SUPERMERCADO.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
