@@ -36,4 +36,5 @@ model Item {
   updatedAt    DateTime @updatedAt
   comprado     Boolean  @default(false)
   supermercado String   @default("general") // <-- NUEVO CAMPO
+  categoria    String   @default("Otros")
 }
