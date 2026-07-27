@@ -6,6 +6,7 @@ import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import nodemailer from 'nodemailer'; // <-- NUEVA IMPORTACIÓN
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,18 +14,25 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 
 const app = express();
-// Creamos un servidor HTTP nativo pasando la app de Express
 const httpServer = createServer(app); 
-// Inicializamos Socket.io adjuntándolo al servidor HTTP
 const io = new Server(httpServer, {
   cors: {
-    origin: "*", // En desarrollo permitimos conexiones de cualquier IP (tu móvil, tu PC)
+    origin: "*", 
     methods: ["GET", "POST"]
   }
 });
 
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
+
+// --- CONFIGURACIÓN DE NODEMAILER ---
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER, 
+    pass: process.env.EMAIL_PASS  
+  }
+});
 
 app.use(cors());
 app.use(express.json());
@@ -35,7 +43,7 @@ app.get('/api/houses/:houseId/items', async (req, res) => {
     const { houseId } = req.params;
     const items = await prisma.item.findMany({
       where: { houseId },
-      orderBy: { createdAt: 'desc' } // Los más nuevos primero
+      orderBy: { createdAt: 'desc' } 
     });
     res.json(items);
   } catch (error) {
@@ -44,13 +52,9 @@ app.get('/api/houses/:houseId/items', async (req, res) => {
   }
 });
 
-// 1. Apuntamos a la carpeta compilada de React
 const frontendPath = path.join(__dirname, '../../frontend/dist');
-
-// 2. Le decimos a Express que sirva esos archivos estáticos
 app.use(express.static(frontendPath));
 
-// 3. Redirigimos cualquier ruta no reconocida al index.html de React
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
@@ -60,66 +64,66 @@ app.get(/.*/, (req, res) => {
 io.on('connection', (socket) => {
   console.log(`Un usuario se ha conectado: ${socket.id}`);
 
-  // 1. El usuario entra en la app y se une a la "sala" de su casa
   socket.on('joinHouse', (houseId) => {
     socket.join(houseId);
     console.log(`Usuario ${socket.id} se unió a la casa ${houseId}`);
   });
 
   socket.on('toggle-item', async (data) => {
-  try {
-    // Actualizamos el producto en Supabase con el nuevo estado
-    const updatedItem = await prisma.item.update({
-      where: { id: data.itemId },
-      data: { comprado: data.comprado }
-    });
+    try {
+      const updatedItem = await prisma.item.update({
+        where: { id: data.itemId },
+        data: { comprado: data.comprado }
+      });
+      io.to(data.houseId).emit('item-toggled', updatedItem);
+    } catch (error) {
+      console.error("Error al cambiar estado del item:", error);
+    }
+  });
 
-    // Avisamos a todos los móviles conectados a esa casa
-    io.to(data.houseId).emit('item-toggled', updatedItem);
-  } catch (error) {
-    console.error("Error al cambiar estado del item:", error);
-  }
-});
-
-  // 2. El usuario añade un artículo a la lista
   socket.on('addItem', async (data) => {
     try {
       const { name, houseId, addedById } = data;
-      
-      // Primero lo guardamos en la base de datos con Prisma
       const newItem = await prisma.item.create({
-        data: { 
-          name, 
-          houseId, 
-          addedById 
-        },
-        include: { addedBy: true } // Para saber el nombre de quién lo añadió
+        data: { name, houseId, addedById },
+        include: { addedBy: true } 
       });
-
-      // Luego, disparamos un evento a todos los móviles conectados a esa casa
-      // "io.to(houseId)" asegura que solo lo reciban los de esa casa
       io.to(houseId).emit('itemAdded', newItem);
-      
     } catch (error) {
       console.error("Error al añadir item por WebSocket:", error);
     }
   });
 
-  // El usuario elimina un artículo
   socket.on('deleteItem', async (data) => {
     try {
       const { itemId, houseId } = data;
-      
-      // CAMBIO CLAVE: Usamos deleteMany en lugar de delete
       await prisma.item.deleteMany({
         where: { id: itemId }
       });
-
-      // Avisamos a las pantallas para que lo quiten visualmente
       io.to(houseId).emit('itemDeleted', itemId);
-      
     } catch (error) {
       console.error("Error al borrar item por WebSocket:", error);
+    }
+  });
+
+  // --- NUEVA LÓGICA DE SUGERENCIAS ---
+  socket.on('sendSuggestion', async (data) => {
+    try {
+      const { text, houseId } = data;
+      
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: process.env.EMAIL_USER, // Te lo envías a ti mismo
+        subject: `💡 Nueva sugerencia para la lista de la compra`,
+        text: `Has recibido una nueva sugerencia desde la casa:\n\n"${text}"`
+      };
+
+      await transporter.sendMail(mailOptions);
+      
+      // Avisamos al frontend de que se ha enviado correctamente para que cierre la ventana
+      socket.emit('suggestionSent');
+    } catch (error) {
+      console.error("Error al enviar el correo:", error);
     }
   });
 
@@ -128,7 +132,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// Arrancamos el servidor
 httpServer.listen(PORT, () => {
   console.log(`Servidor Backend corriendo en http://localhost:${PORT}`);
 });

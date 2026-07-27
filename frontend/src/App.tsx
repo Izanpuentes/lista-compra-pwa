@@ -8,13 +8,16 @@ interface ShoppingItem {
   houseId: string;
 }
 
-// Conectamos con nuestro backend de Render
 const socket = io()
 
 function App() {
   const [houseId] = useState('a513962b-c0c9-446f-bf70-2684f545b4dd')
   const [items, setItems] = useState<ShoppingItem[]>([])
   const [newItemName, setNewItemName] = useState('')
+  
+  // --- NUEVOS ESTADOS PARA SUGERENCIAS ---
+  const [isSuggestionOpen, setIsSuggestionOpen] = useState(false)
+  const [suggestionText, setSuggestionText] = useState('')
 
   useEffect(() => {
     socket.emit('joinHouse', houseId)
@@ -41,10 +44,18 @@ function App() {
       setItems((prevItems) => prevItems.filter(item => item.id !== deletedItemId))
     })
 
+    // Escuchamos la confirmación de que la sugerencia se envió
+    socket.on('suggestionSent', () => {
+      alert("¡Sugerencia enviada correctamente!")
+      setIsSuggestionOpen(false)
+      setSuggestionText('')
+    })
+
     return () => {
       socket.off('itemAdded')
       socket.off('item-toggled') 
       socket.off('itemDeleted')
+      socket.off('suggestionSent')
     }
   }, [houseId])
 
@@ -68,13 +79,18 @@ function App() {
     });
   };
 
-  // --- AQUÍ ESTÁ LA FUNCIÓN QUE FALTABA ---
   const handleDeleteItem = (itemId: string) => {
     socket.emit('deleteItem', { houseId, itemId });
   };
 
+  // --- FUNCIÓN PARA ENVIAR LA SUGERENCIA ---
+  const handleSendSuggestion = () => {
+    if (!suggestionText.trim()) return;
+    socket.emit('sendSuggestion', { text: suggestionText, houseId });
+  }
+
   return (
-    <div style={{ maxWidth: '500px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' }}>
+    <div style={{ maxWidth: '500px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif', paddingBottom: '80px' }}>
       <h1>🛒 Lista Compartida</h1>
       
       <form onSubmit={handleAddItem} style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
@@ -90,7 +106,6 @@ function App() {
         </button>
       </form>
 
-      {/* LISTA DE PENDIENTES */}
       <h3>🛒 Para comprar</h3>
       <ul style={{ listStyle: 'none', padding: 0 }}>
         {items.filter(item => !item.comprado).map(item => (
@@ -100,7 +115,7 @@ function App() {
             </span>
             <button 
               onClick={(e) => {
-                e.stopPropagation(); // Evita que se marque como comprado al intentar borrar
+                e.stopPropagation(); 
                 handleDeleteItem(item.id);
               }} 
               style={{ padding: '8px 12px', background: '#ff4d4f', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '16px' }}
@@ -113,7 +128,6 @@ function App() {
 
       <hr />
 
-      {/* LISTA DE FRECUENTES / COMPRADOS */}
       <h3>✅ Comprados / Frecuentes</h3>
       <ul style={{ listStyle: 'none', padding: 0 }}>
         {items.filter(item => item.comprado).map(item => (
@@ -136,6 +150,67 @@ function App() {
           </li>
         ))}
       </ul>
+
+      {/* --- BOTÓN FLOTANTE DE SUGERENCIAS --- */}
+      <button 
+        onClick={() => setIsSuggestionOpen(true)}
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          width: '60px',
+          height: '60px',
+          borderRadius: '50%',
+          backgroundColor: '#007bff',
+          color: 'white',
+          border: 'none',
+          fontSize: '24px',
+          boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+          cursor: 'pointer',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}
+      >
+        💡
+      </button>
+
+      {/* --- MODAL DE SUGERENCIAS --- */}
+      {isSuggestionOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
+          justifyContent: 'center', alignItems: 'center', zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white', padding: '20px', borderRadius: '12px',
+            width: '90%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '15px'
+          }}>
+            <h3 style={{ margin: 0 }}>Enviar sugerencia</h3>
+            <textarea 
+              value={suggestionText}
+              onChange={(e) => setSuggestionText(e.target.value)}
+              placeholder="¿Qué echas en falta en la app?"
+              rows={4}
+              style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ccc', fontSize: '16px', resize: 'none' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button 
+                onClick={() => setIsSuggestionOpen(false)}
+                style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: '#f0f0f0' }}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleSendSuggestion}
+                style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: '#28a745', color: 'white' }}
+              >
+                Enviar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
