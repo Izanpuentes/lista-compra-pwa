@@ -4,7 +4,7 @@ import { io } from 'socket.io-client'
 interface ShoppingItem {
   id: string; 
   name: string;
-  comprado: boolean; // Corregido de isBought a comprado
+  comprado: boolean;
   houseId: string;
 }
 
@@ -43,7 +43,7 @@ function App() {
 
     return () => {
       socket.off('itemAdded')
-      socket.off('item-toggled') // Es buena práctica limpiar también este evento
+      socket.off('item-toggled') 
       socket.off('itemDeleted')
     }
   }, [houseId])
@@ -60,13 +60,17 @@ function App() {
     setNewItemName('')
   }
 
-  // Añadimos el tipo ShoppingItem para evitar errores de TypeScript
   const toggleItem = (item: ShoppingItem) => {
     socket.emit('toggle-item', { 
       itemId: item.id, 
-      houseId: houseId, // Usamos la variable de estado houseId
+      houseId: houseId, 
       comprado: !item.comprado 
     });
+  };
+
+  // --- AQUÍ ESTÁ LA FUNCIÓN QUE FALTABA ---
+  const handleDeleteItem = (itemId: string) => {
+    socket.emit('deleteItem', { houseId, itemId });
   };
 
   return (
@@ -88,10 +92,21 @@ function App() {
 
       {/* LISTA DE PENDIENTES */}
       <h3>🛒 Para comprar</h3>
-      <ul>
+      <ul style={{ listStyle: 'none', padding: 0 }}>
         {items.filter(item => !item.comprado).map(item => (
-          <li key={item.id} onClick={() => toggleItem(item)} style={{ cursor: 'pointer' }}>
-            {item.name} {/* Corregido: antes era item.nombre */}
+          <li key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #eee' }}>
+            <span onClick={() => toggleItem(item)} style={{ cursor: 'pointer', flex: 1, fontSize: '18px' }}>
+              {item.name}
+            </span>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation(); // Evita que se marque como comprado al intentar borrar
+                handleDeleteItem(item.id);
+              }} 
+              style={{ padding: '8px 12px', background: '#ff4d4f', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '16px' }}
+            >
+              🗑️
+            </button>
           </li>
         ))}
       </ul>
@@ -100,14 +115,24 @@ function App() {
 
       {/* LISTA DE FRECUENTES / COMPRADOS */}
       <h3>✅ Comprados / Frecuentes</h3>
-      <ul>
+      <ul style={{ listStyle: 'none', padding: 0 }}>
         {items.filter(item => item.comprado).map(item => (
-          <li 
-            key={item.id} 
-            onClick={() => toggleItem(item)} 
-            style={{ textDecoration: 'line-through', color: 'gray', opacity: 0.7, cursor: 'pointer' }}
-          >
-            {item.name} {/* Corregido: antes era item.nombre */}
+          <li key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #eee' }}>
+            <span 
+              onClick={() => toggleItem(item)} 
+              style={{ textDecoration: 'line-through', color: 'gray', opacity: 0.7, cursor: 'pointer', flex: 1, fontSize: '18px' }}
+            >
+              {item.name}
+            </span>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteItem(item.id);
+              }} 
+              style={{ padding: '8px 12px', background: '#ff4d4f', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '16px' }}
+            >
+              🗑️
+            </button>
           </li>
         ))}
       </ul>
