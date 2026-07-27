@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
-import { categorizarProducto } from './categorizador' // <-- Usando el módulo externo que creamos
+import { categorizarProducto } from './categorizador'
 
 interface ShoppingItem {
   id: string; 
@@ -9,7 +9,7 @@ interface ShoppingItem {
   houseId: string;
   supermercado: string;
   categoria: string;
-  creador: string; // <-- Nuevo campo en el frontend
+  creador: string;
 }
 
 const socket = io()
@@ -21,10 +21,7 @@ const RUTAS_SUPERMERCADO = [
 ];
 
 function App() {
-  // --- IDENTIFICACIÓN DEL USUARIO ---
-  // Intentamos leer el nombre guardado en el móvil
   const [currentUser, setCurrentUser] = useState<string | null>(localStorage.getItem('listaCompraUser'))
-
   const [houseId] = useState('a513962b-c0c9-446f-bf70-2684f545b4dd')
   const [items, setItems] = useState<ShoppingItem[]>([])
   
@@ -34,6 +31,9 @@ function App() {
   const [isSuggestionOpen, setIsSuggestionOpen] = useState(false)
   const [suggestionText, setSuggestionText] = useState('')
   const [activeSupermarket, setActiveSupermarket] = useState<string | null>(null)
+
+  // --- NUEVO ESTADO PARA LA VOZ ---
+  const [isListening, setIsListening] = useState(false)
 
   useEffect(() => {
     socket.emit('joinHouse', houseId)
@@ -64,6 +64,50 @@ function App() {
     }
   }, [houseId])
 
+  // --- LÓGICA DEL RECONOCIMIENTO DE VOZ ---
+  const startListening = () => {
+    // Compatibilidad para diferentes navegadores (Safari usa webkit)
+    // @ts-ignore
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      alert("Lo siento, tu navegador no soporta el dictado por voz.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'es-ES'; // Configuramos en español
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      // Quitamos el posible punto final que añaden algunos móviles
+      const textoLimpio = transcript.replace(/\.$/, ''); 
+      
+      setNewItemName(textoLimpio);
+      
+      // Categorizamos automáticamente lo que ha escuchado
+      const categoriaDetectada = categorizarProducto(textoLimpio);
+      setNewItemCategory(categoriaDetectada);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Error en reconocimiento de voz:", event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
+
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const text = e.target.value;
     setNewItemName(text);
@@ -80,7 +124,7 @@ function App() {
       houseId: houseId,
       supermercado: activeSupermarket,
       categoria: newItemCategory,
-      creador: currentUser // <-- Enviamos el nombre de quien lo añade
+      creador: currentUser 
     })
     
     setNewItemName('')
@@ -102,8 +146,6 @@ function App() {
     return '#ffffff';
   }
 
-  // --- PANTALLA DE SELECCIÓN DE PERFIL ---
-  // Si no hay usuario guardado, forzamos a que elijan uno antes de ver la app
   if (!currentUser) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f2f5', fontFamily: 'sans-serif' }}>
@@ -113,8 +155,8 @@ function App() {
             <button 
               key={nombre}
               onClick={() => {
-                localStorage.setItem('listaCompraUser', nombre); // Lo guardamos en memoria
-                setCurrentUser(nombre); // Actualizamos el estado
+                localStorage.setItem('listaCompraUser', nombre); 
+                setCurrentUser(nombre); 
               }}
               style={{ WebkitAppearance: 'none', padding: '15px', fontSize: '20px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}
             >
@@ -156,7 +198,7 @@ function App() {
             </div>
             
             <form onSubmit={handleAddItem} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
                 <input 
                   type="text" 
                   value={newItemName}
@@ -164,7 +206,28 @@ function App() {
                   placeholder={`Añadir a ${activeSupermarket}...`} 
                   style={{ flex: 1, padding: '10px', fontSize: '16px', borderRadius: '8px', border: '1px solid #ccc', WebkitAppearance: 'none' }}
                 />
-                <button type="submit" style={{ WebkitAppearance: 'none', padding: '10px 20px', fontSize: '16px', cursor: 'pointer', backgroundColor: '#e0e0e0', color: '#000', border: '1px solid #ccc', borderRadius: '8px' }}>
+                
+                {/* --- BOTÓN DE MICRÓFONO --- */}
+                <button 
+                  type="button" 
+                  onClick={startListening}
+                  style={{ 
+                    WebkitAppearance: 'none', 
+                    padding: '10px 15px', 
+                    fontSize: '20px', 
+                    cursor: 'pointer', 
+                    backgroundColor: isListening ? '#ff4d4f' : '#e0e0e0', // Se pone rojo si está escuchando
+                    color: isListening ? 'white' : 'black', 
+                    border: '1px solid #ccc', 
+                    borderRadius: '8px',
+                    transition: 'all 0.3s ease'
+                  }}
+                  title="Dictar por voz"
+                >
+                  {isListening ? '🔴' : '🎙️'}
+                </button>
+
+                <button type="submit" style={{ WebkitAppearance: 'none', padding: '10px 15px', fontSize: '16px', cursor: 'pointer', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '8px' }}>
                   Añadir
                 </button>
               </div>
@@ -184,7 +247,6 @@ function App() {
             
             {RUTAS_SUPERMERCADO.map(categoria => {
               const itemsDeEstaCategoria = filteredItems.filter(item => !item.comprado && item.categoria === categoria);
-              
               if (itemsDeEstaCategoria.length === 0) return null; 
 
               return (
