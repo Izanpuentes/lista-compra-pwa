@@ -4,7 +4,8 @@ import { io } from 'socket.io-client'
 interface ShoppingItem {
   id: string; 
   name: string;
-  isBought?: boolean;
+  comprado: boolean; // Corregido de isBought a comprado
+  houseId: string;
 }
 
 // Conectamos con nuestro backend de Render
@@ -16,10 +17,8 @@ function App() {
   const [newItemName, setNewItemName] = useState('')
 
   useEffect(() => {
-    // 1. Nos unimos a la "sala" de esta casa
     socket.emit('joinHouse', houseId)
 
-    // 2. CORREGIDO: Añadido /items al final de la ruta
     fetch(`/api/houses/${houseId}/items`)
       .then(res => {
         if (!res.ok) throw new Error("Error en la respuesta del servidor")
@@ -28,18 +27,23 @@ function App() {
       .then(data => setItems(data))
       .catch(err => console.error("Error cargando items:", err))
 
-    // 3. Escuchamos activamente
     socket.on('itemAdded', (newItem) => {
       setItems((prevItems) => [newItem, ...prevItems])
     })
+
+    socket.on('item-toggled', (updatedItem) => {
+      setItems((prevItems) => 
+        prevItems.map(item => item.id === updatedItem.id ? updatedItem : item)
+      );
+    });
 
     socket.on('itemDeleted', (deletedItemId) => {
       setItems((prevItems) => prevItems.filter(item => item.id !== deletedItemId))
     })
 
-    // 4. CORREGIDO: Un solo return para limpiar los eventos
     return () => {
       socket.off('itemAdded')
+      socket.off('item-toggled') // Es buena práctica limpiar también este evento
       socket.off('itemDeleted')
     }
   }, [houseId])
@@ -56,9 +60,13 @@ function App() {
     setNewItemName('')
   }
 
-  const handleDeleteItem = (itemId: string) => {
-    // CORREGIDO: Usamos la Opción B (WebSockets) que es la que configuraste en el backend
-    socket.emit('deleteItem', { houseId, itemId });
+  // Añadimos el tipo ShoppingItem para evitar errores de TypeScript
+  const toggleItem = (item: ShoppingItem) => {
+    socket.emit('toggle-item', { 
+      itemId: item.id, 
+      houseId: houseId, // Usamos la variable de estado houseId
+      comprado: !item.comprado 
+    });
   };
 
   return (
@@ -78,18 +86,28 @@ function App() {
         </button>
       </form>
 
-      <ul style={{ listStyle: 'none', padding: 0 }}>
-        {items.map((item) => (
-          <li key={item.id} style={{ padding: '15px', background: '#f5f5f5', marginBottom: '10px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            
-            <span>{item.name}</span>
-            
-            <button 
-              onClick={() => handleDeleteItem(item.id)}
-              style={{ background: '#ff4d4d', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
-            >
-              🗑️ Borrar
-            </button>
+      {/* LISTA DE PENDIENTES */}
+      <h3>🛒 Para comprar</h3>
+      <ul>
+        {items.filter(item => !item.comprado).map(item => (
+          <li key={item.id} onClick={() => toggleItem(item)} style={{ cursor: 'pointer' }}>
+            {item.name} {/* Corregido: antes era item.nombre */}
+          </li>
+        ))}
+      </ul>
+
+      <hr />
+
+      {/* LISTA DE FRECUENTES / COMPRADOS */}
+      <h3>✅ Comprados / Frecuentes</h3>
+      <ul>
+        {items.filter(item => item.comprado).map(item => (
+          <li 
+            key={item.id} 
+            onClick={() => toggleItem(item)} 
+            style={{ textDecoration: 'line-through', color: 'gray', opacity: 0.7, cursor: 'pointer' }}
+          >
+            {item.name} {/* Corregido: antes era item.nombre */}
           </li>
         ))}
       </ul>

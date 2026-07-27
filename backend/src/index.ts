@@ -66,6 +66,21 @@ io.on('connection', (socket) => {
     console.log(`Usuario ${socket.id} se unió a la casa ${houseId}`);
   });
 
+  socket.on('toggle-item', async (data) => {
+  try {
+    // Actualizamos el producto en Supabase con el nuevo estado
+    const updatedItem = await prisma.item.update({
+      where: { id: data.itemId },
+      data: { comprado: data.comprado }
+    });
+
+    // Avisamos a todos los móviles conectados a esa casa
+    io.to(data.houseId).emit('item-toggled', updatedItem);
+  } catch (error) {
+    console.error("Error al cambiar estado del item:", error);
+  }
+});
+
   // 2. El usuario añade un artículo a la lista
   socket.on('addItem', async (data) => {
     try {

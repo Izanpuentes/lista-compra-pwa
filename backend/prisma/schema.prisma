@@ -28,7 +28,6 @@ model User {
 model Item {
   id        String   @id @default(uuid())
   name      String
-  isBought  Boolean  @default(false)
   houseId   String
   house     House    @relation(fields: [houseId], references: [id])
   addedById String?
