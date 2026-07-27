@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef} from 'react'
 import { io } from 'socket.io-client'
 import { categorizarProducto } from './categorizador'
 
@@ -35,6 +35,8 @@ function App() {
   // --- NUEVO ESTADO PARA LA VOZ ---
   const [isListening, setIsListening] = useState(false)
 
+  const recognitionRef = useRef<any>(null);
+
   useEffect(() => {
     socket.emit('joinHouse', houseId)
 
@@ -65,43 +67,67 @@ function App() {
   }, [houseId])
 
   // --- LÓGICA DEL RECONOCIMIENTO DE VOZ ---
-  const startListening = () => {
-    // Compatibilidad para diferentes navegadores (Safari usa webkit)
+  // --- LÓGICA DEL RECONOCIMIENTO DE VOZ CONTINUO E INTELIGENTE ---
+  const toggleListening = () => {
+    // Si ya está escuchando, lo apagamos manualmente
+    if (isListening) {
+      if (recognitionRef.current) recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+
+    // Si no está escuchando, lo encendemos
     // @ts-ignore
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
     if (!SpeechRecognition) {
       alert("Lo siento, tu navegador no soporta el dictado por voz.");
       return;
     }
 
     const recognition = new SpeechRecognition();
-    recognition.lang = 'es-ES'; // Configuramos en español
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognitionRef.current = recognition; // Lo guardamos en la referencia
+    recognition.lang = 'es-ES';
+    
+    recognition.continuous = true; // <-- AHORA ESCUCHA DE FORMA CONTINUA
+    recognition.interimResults = false; // Solo procesa cuando terminas la frase
 
-    recognition.onstart = () => {
-      setIsListening(true);
-    };
+    recognition.onstart = () => setIsListening(true);
 
     recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      // Quitamos el posible punto final que añaden algunos móviles
-      const textoLimpio = transcript.replace(/\.$/, ''); 
+      // Como es continuo, cogemos la última frase que ha escuchado
+      const lastIndex = event.results.length - 1;
+      // Forzamos a que lo lea como string
+      const transcript: string = String(event.results[lastIndex][0].transcript).trim().replace(/\.$/, '');
       
-      setNewItemName(textoLimpio);
-      
-      // Categorizamos automáticamente lo que ha escuchado
-      const categoriaDetectada = categorizarProducto(textoLimpio);
-      setNewItemCategory(categoriaDetectada);
+      if (!transcript) return;
+
+      // TRUCO PRO: Añadimos el tipado (p: string) para que TypeScript no se queje
+      const productosDichos = transcript
+        .split(/\s+y\s+|,/i) 
+        .map((p: string) => p.trim())
+        .filter((p: string) => p.length > 0);
+
+      // Enviamos cada producto a la base de datos automáticamente
+      productosDichos.forEach((productoStr: string) => {
+        const categoriaDetectada = categorizarProducto(productoStr);
+        
+        socket.emit('addItem', {
+          name: productoStr,
+          houseId: houseId,
+          supermercado: activeSupermarket,
+          categoria: categoriaDetectada,
+          creador: currentUser 
+        });
+      });
     };
 
     recognition.onerror = (event: any) => {
-      console.error("Error en reconocimiento de voz:", event.error);
+      console.error("Error en voz:", event.error);
       setIsListening(false);
     };
 
     recognition.onend = () => {
+      // Si el móvil apaga el micro por seguridad, actualizamos el botón
       setIsListening(false);
     };
 
@@ -208,15 +234,16 @@ function App() {
                 />
                 
                 {/* --- BOTÓN DE MICRÓFONO --- */}
+                {/* --- BOTÓN DE MICRÓFONO --- */}
                 <button 
                   type="button" 
-                  onClick={startListening}
+                  onClick={toggleListening} // <-- AHORA LLAMA A LA NUEVA FUNCIÓN
                   style={{ 
                     WebkitAppearance: 'none', 
                     padding: '10px 15px', 
                     fontSize: '20px', 
                     cursor: 'pointer', 
-                    backgroundColor: isListening ? '#ff4d4f' : '#e0e0e0', // Se pone rojo si está escuchando
+                    backgroundColor: isListening ? '#ff4d4f' : '#e0e0e0',
                     color: isListening ? 'white' : 'black', 
                     border: '1px solid #ccc', 
                     borderRadius: '8px',
