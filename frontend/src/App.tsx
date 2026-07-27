@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
+import { categorizarProducto } from './categorizador';
 
 interface ShoppingItem {
   id: string; 
@@ -77,24 +78,9 @@ function App() {
     const text = e.target.value;
     setNewItemName(text);
     
-    const lower = text.toLowerCase();
-    
-    // Asignación automática por palabras clave
-    if (lower.includes('patatas fritas') || lower.includes('bolsa de')) setNewItemCategory('Fritos/Bolsas');
-    else if (lower.includes('patata') || lower.includes('tomate') || lower.includes('fruta') || lower.includes('verdura')) setNewItemCategory('Verduras y frutas');
-    else if (lower.includes('pollo') || lower.includes('carne') || lower.includes('ternera') || lower.includes('cerdo')) setNewItemCategory('Carnes');
-    else if (lower.includes('pescado') || lower.includes('salmon') || lower.includes('merluza')) setNewItemCategory('Pescados');
-    else if (lower.includes('leche')) setNewItemCategory('Leche');
-    else if (lower.includes('pan') || lower.includes('barra')) setNewItemCategory('Pan');
-    else if (lower.includes('cerveza') || lower.includes('vino') || lower.includes('alcohol')) setNewItemCategory('Alcohol');
-    else if (lower.includes('queso') || lower.includes('jamon') || lower.includes('yogur') || lower.includes('embutido')) setNewItemCategory('Lácteos y embutidos');
-    else if (lower.includes('pizza') || lower.includes('lasaña') || lower.includes('precocinado')) setNewItemCategory('Precocinados');
-    else if (lower.includes('lata') || lower.includes('atun') || lower.includes('maiz')) setNewItemCategory('Enlatados');
-    else if (lower.includes('chocolate') || lower.includes('nuez') || lower.includes('almendra')) setNewItemCategory('Chocolates y frutos secos');
-    else if (lower.includes('gel') || lower.includes('champu') || lower.includes('papel') || lower.includes('pasta')) setNewItemCategory('Higiene');
-    else if (lower.includes('helado') || lower.includes('polo')) setNewItemCategory('Helados');
-    else if (lower.includes('galleta') || lower.includes('cereal') || lower.includes('cafe')) setNewItemCategory('Desayuno');
-    else setNewItemCategory('Otros');
+    // Llamamos a nuestra nueva función externa que hace todo el trabajo sucio
+    const categoriaDetectada = categorizarProducto(text);
+    setNewItemCategory(categoriaDetectada);
   };
 
   const handleAddItem = (e: React.FormEvent) => {
@@ -123,6 +109,7 @@ function App() {
     if (activeSupermarket === 'aldi') return '#e0f0ff';
     if (activeSupermarket === 'mercadona') return '#e6faec';
     if (activeSupermarket === 'lidl') return '#fffde6';
+    if (activeSupermarket === 'costco') return '#ffe6e6';
     return '#ffffff';
   }
 
@@ -138,6 +125,7 @@ function App() {
             <button onClick={() => setActiveSupermarket('aldi')} style={{ WebkitAppearance: 'none', padding: '20px', fontSize: '24px', backgroundColor: '#005b9f', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Aldi</button>
             <button onClick={() => setActiveSupermarket('mercadona')} style={{ WebkitAppearance: 'none', padding: '20px', fontSize: '24px', backgroundColor: '#00824b', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Mercadona</button>
             <button onClick={() => setActiveSupermarket('lidl')} style={{ WebkitAppearance: 'none', padding: '20px', fontSize: '24px', backgroundColor: '#fff000', color: '#005b9f', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Lidl</button>
+            <button onClick={() => setActiveSupermarket('costco')} style={{ WebkitAppearance: 'none', padding: '20px', fontSize: '24px', backgroundColor: '#e31837', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Costco</button>
           </div>
         )}
 
