@@ -84,7 +84,7 @@ io.on('connection', (socket) => {
   socket.on('addItem', async (data) => {
     try {
       // Extraemos también el supermercado de los datos que envía React
-      const { name, houseId, addedById, supermercado, categoria } = data;
+      const { name, houseId, addedById, supermercado, categoria, creador } = data;
       
       const newItem = await prisma.item.create({
         data: { 
@@ -92,7 +92,8 @@ io.on('connection', (socket) => {
           houseId, 
           addedById,
           supermercado,
-          categoria
+          categoria,
+          creador
         },
         include: { addedBy: true } 
       });

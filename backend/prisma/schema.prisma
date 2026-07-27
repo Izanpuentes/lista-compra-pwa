@@ -37,4 +37,5 @@ model Item {
   comprado     Boolean  @default(false)
   supermercado String   @default("general") // <-- NUEVO CAMPO
   categoria    String   @default("Otros")
+  creador      String   @default("Anónimo")
 }

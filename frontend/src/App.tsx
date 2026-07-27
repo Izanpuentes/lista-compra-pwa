@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
-import { categorizarProducto } from './categorizador';
+import { categorizarProducto } from './categorizador' // <-- Usando el módulo externo que creamos
 
 interface ShoppingItem {
   id: string; 
@@ -8,35 +8,26 @@ interface ShoppingItem {
   comprado: boolean;
   houseId: string;
   supermercado: string;
-  categoria: string; // <-- Nuevo campo en el frontend
+  categoria: string;
+  creador: string; // <-- Nuevo campo en el frontend
 }
 
 const socket = io()
 
-// --- DEFINIMOS LA RUTA LÓGICA DEL SUPERMERCADO ---
 const RUTAS_SUPERMERCADO = [
-  'Verduras y frutas',
-  'Carnes',
-  'Pescados',
-  'Desayuno',
-  'Fritos/Bolsas',
-  'Pan',
-  'Leche',
-  'Alcohol',
-  'Lácteos y embutidos',
-  'Precocinados',
-  'Enlatados',
-  'Chocolates y frutos secos',
-  'Higiene',
-  'Helados',
-  'Otros'
+  'Verduras y frutas', 'Carnes', 'Pescados', 'Desayuno', 'Fritos/Bolsas', 
+  'Pan', 'Leche', 'Alcohol', 'Lácteos y embutidos', 'Precocinados', 
+  'Enlatados', 'Chocolates y frutos secos', 'Higiene', 'Helados', 'Otros'
 ];
 
 function App() {
+  // --- IDENTIFICACIÓN DEL USUARIO ---
+  // Intentamos leer el nombre guardado en el móvil
+  const [currentUser, setCurrentUser] = useState<string | null>(localStorage.getItem('listaCompraUser'))
+
   const [houseId] = useState('a513962b-c0c9-446f-bf70-2684f545b4dd')
   const [items, setItems] = useState<ShoppingItem[]>([])
   
-  // Estados para el nuevo producto
   const [newItemName, setNewItemName] = useState('')
   const [newItemCategory, setNewItemCategory] = useState('Otros')
   
@@ -73,29 +64,27 @@ function App() {
     }
   }, [houseId])
 
-  // --- LÓGICA DE DICCIONARIO INTELIGENTE ---
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const text = e.target.value;
     setNewItemName(text);
-    
-    // Llamamos a nuestra nueva función externa que hace todo el trabajo sucio
     const categoriaDetectada = categorizarProducto(text);
     setNewItemCategory(categoriaDetectada);
   };
 
   const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newItemName.trim() || !activeSupermarket) return
+    if (!newItemName.trim() || !activeSupermarket || !currentUser) return
 
     socket.emit('addItem', {
       name: newItemName,
       houseId: houseId,
       supermercado: activeSupermarket,
-      categoria: newItemCategory // Enviamos la categoría asignada
+      categoria: newItemCategory,
+      creador: currentUser // <-- Enviamos el nombre de quien lo añade
     })
     
     setNewItemName('')
-    setNewItemCategory('Otros') // Reseteamos al enviar
+    setNewItemCategory('Otros')
   }
 
   const toggleItem = (item: ShoppingItem) => socket.emit('toggle-item', { itemId: item.id, houseId: houseId, comprado: !item.comprado });
@@ -113,6 +102,30 @@ function App() {
     return '#ffffff';
   }
 
+  // --- PANTALLA DE SELECCIÓN DE PERFIL ---
+  // Si no hay usuario guardado, forzamos a que elijan uno antes de ver la app
+  if (!currentUser) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f2f5', fontFamily: 'sans-serif' }}>
+        <h1 style={{ marginBottom: '30px', textAlign: 'center' }}>¿Quién está haciendo la lista?</h1>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', width: '100%', maxWidth: '300px' }}>
+          {['Izán', 'Mamá', 'Papá', 'Hermana'].map(nombre => (
+            <button 
+              key={nombre}
+              onClick={() => {
+                localStorage.setItem('listaCompraUser', nombre); // Lo guardamos en memoria
+                setCurrentUser(nombre); // Actualizamos el estado
+              }}
+              style={{ WebkitAppearance: 'none', padding: '15px', fontSize: '20px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}
+            >
+              {nombre}
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   const filteredItems = items.filter(item => item.supermercado === activeSupermarket);
 
   return (
@@ -121,7 +134,13 @@ function App() {
         
         {!activeSupermarket && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '50px' }}>
-            <h1 style={{ textAlign: 'center' }}>¿Dónde vamos a comprar?</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h1 style={{ textAlign: 'center', margin: 0 }}>¿Dónde vamos a comprar?</h1>
+              <div style={{ fontSize: '14px', color: '#666', cursor: 'pointer' }} onClick={() => { localStorage.removeItem('listaCompraUser'); setCurrentUser(null); }}>
+                👤 {currentUser} (Cambiar)
+              </div>
+            </div>
+            
             <button onClick={() => setActiveSupermarket('aldi')} style={{ WebkitAppearance: 'none', padding: '20px', fontSize: '24px', backgroundColor: '#005b9f', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Aldi</button>
             <button onClick={() => setActiveSupermarket('mercadona')} style={{ WebkitAppearance: 'none', padding: '20px', fontSize: '24px', backgroundColor: '#00824b', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Mercadona</button>
             <button onClick={() => setActiveSupermarket('lidl')} style={{ WebkitAppearance: 'none', padding: '20px', fontSize: '24px', backgroundColor: '#fff000', color: '#005b9f', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Lidl</button>
@@ -141,7 +160,7 @@ function App() {
                 <input 
                   type="text" 
                   value={newItemName}
-                  onChange={handleNameChange} // <- Llama a la lógica inteligente
+                  onChange={handleNameChange}
                   placeholder={`Añadir a ${activeSupermarket}...`} 
                   style={{ flex: 1, padding: '10px', fontSize: '16px', borderRadius: '8px', border: '1px solid #ccc', WebkitAppearance: 'none' }}
                 />
@@ -150,7 +169,6 @@ function App() {
                 </button>
               </div>
               
-              {/* Desplegable para corrección manual */}
               <select 
                 value={newItemCategory} 
                 onChange={(e) => setNewItemCategory(e.target.value)}
@@ -164,11 +182,10 @@ function App() {
 
             <h3>🛒 Carro Lista de la Compra</h3>
             
-            {/* --- RENDERIZADO AGRUPADO POR CATEGORÍAS --- */}
             {RUTAS_SUPERMERCADO.map(categoria => {
               const itemsDeEstaCategoria = filteredItems.filter(item => !item.comprado && item.categoria === categoria);
               
-              if (itemsDeEstaCategoria.length === 0) return null; // Oculta secciones vacías
+              if (itemsDeEstaCategoria.length === 0) return null; 
 
               return (
                 <div key={categoria} style={{ marginBottom: '20px' }}>
@@ -178,7 +195,9 @@ function App() {
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {itemsDeEstaCategoria.map(item => (
                       <li key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #ddd' }}>
-                        <span onClick={() => toggleItem(item)} style={{ cursor: 'pointer', flex: 1, fontSize: '18px' }}>{item.name}</span>
+                        <span onClick={() => toggleItem(item)} style={{ cursor: 'pointer', flex: 1, fontSize: '18px' }}>
+                          {item.name} <span style={{ fontSize: '12px', color: '#888', marginLeft: '6px' }}>({item.creador})</span>
+                        </span>
                         <button onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }} style={{ WebkitAppearance: 'none', padding: '8px 12px', background: '#ff4d4f', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '16px' }}>🗑️</button>
                       </li>
                     ))}
@@ -193,7 +212,9 @@ function App() {
             <ul style={{ listStyle: 'none', padding: 0 }}>
               {filteredItems.filter(item => item.comprado).map(item => (
                 <li key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #ddd' }}>
-                  <span onClick={() => toggleItem(item)} style={{ textDecoration: 'line-through', color: 'gray', opacity: 0.7, cursor: 'pointer', flex: 1, fontSize: '18px' }}>{item.name}</span>
+                  <span onClick={() => toggleItem(item)} style={{ textDecoration: 'line-through', color: 'gray', opacity: 0.7, cursor: 'pointer', flex: 1, fontSize: '18px' }}>
+                    {item.name} <span style={{ fontSize: '12px', color: '#aaa', marginLeft: '6px' }}>({item.creador})</span>
+                  </span>
                   <button onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }} style={{ WebkitAppearance: 'none', padding: '8px 12px', background: '#ff4d4f', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '16px' }}>🗑️</button>
                 </li>
               ))}
