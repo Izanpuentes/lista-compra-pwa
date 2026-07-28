@@ -381,14 +381,14 @@ function App() {
             {/* Lista de Frecuentes (Comprados) */}
             <div style={{ marginTop: '40px' }}>
               <h4 style={{ margin: '0 0 12px 10px', color: '#999', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>
-                ✅ Ya en el carro (Frecuentes)
+                ❌ Frecuentes
               </h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {filteredItems.filter(item => item.comprado).map(item => (
                   <div key={item.id} onClick={() => toggleItem(item)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: '20px', cursor: 'pointer' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1, opacity: 0.6 }}>
-                      {/* Checkbox marcado */}
-                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#28a745', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontSize: '14px', flexShrink: 0 }}>✓</div>
+                      {/* Icono aspa roja */}
+                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#ff4d4f', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontSize: '12px', flexShrink: 0 }}>❌</div>
                       <span style={{ textDecoration: 'line-through', fontSize: '18px', color: '#666', fontWeight: '500' }}>
                         {item.name}
                       </span>
@@ -423,88 +423,94 @@ function App() {
 
         {/* --- PANTALLA DEL RECETARIO --- */}
         {isRecetarioOpen && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#f8f9fa', zIndex: 1100, display: 'flex', flexDirection: 'column', padding: '20px', overflowY: 'auto' }}>
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#f8f9fa', zIndex: 1100, display: 'flex', flexDirection: 'column' }}>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-              <h2 style={{ margin: 0, fontSize: '24px', color: '#1a1a1a', fontWeight: '800' }}>📖 Recetario</h2>
-              <button onClick={() => setIsRecetarioOpen(false)} style={{ background: '#f0f2f5', border: 'none', fontSize: '18px', cursor: 'pointer', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>❌</button>
-            </div>
+            {/* CONTENEDOR SUPERIOR FIJO (No hace scroll y no se aplasta) */}
+            <div style={{ padding: '20px 20px 0 20px', flexShrink: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+                <h2 style={{ margin: 0, fontSize: '24px', color: '#1a1a1a', fontWeight: '800' }}>📖 Recetario</h2>
+                <button onClick={() => setIsRecetarioOpen(false)} style={{ background: '#f0f2f5', border: 'none', fontSize: '18px', cursor: 'pointer', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>❌</button>
+              </div>
 
-            <input 
-              type="text" 
-              placeholder="Buscar por receta o ingrediente..." 
-              value={busquedaReceta}
-              onChange={(e) => setBusquedaReceta(e.target.value)}
-              style={{ padding: '16px', fontSize: '16px', borderRadius: '16px', border: 'none', marginBottom: '20px', width: '100%', boxSizing: 'border-box', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', outline: 'none' }}
-            />
-            
-            <div style={{ display: 'flex', overflowX: 'auto', whiteSpace: 'nowrap', gap: '10px', paddingBottom: '15px', marginBottom: '10px', scrollbarWidth: 'none' }}>
-              {categorias.map(cat => (
-                <button 
-                  key={cat}
-                  onClick={() => setCategoriaActiva(cat)}
-                  style={{ 
-                    padding: '10px 20px', 
-                    borderRadius: '20px', 
-                    border: 'none', 
-                    cursor: 'pointer',
-                    fontSize: '15px',
-                    fontWeight: 'bold',
-                    transition: 'all 0.2s',
-                    backgroundColor: categoriaActiva === cat ? '#28a745' : 'white',
-                    color: categoriaActiva === cat ? 'white' : '#555',
-                    boxShadow: '0 4px 10px rgba(0,0,0,0.04)'
-                  }}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', paddingBottom: '40px' }}>
-              {recetasFiltradas.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#888', marginTop: '20px' }}>No hay recetas en esta categoría.</p>
-              ) : (
-                recetasFiltradas.map(receta => (
-                  <div 
-                    key={receta.id} 
-                    onClick={() => setRecetaExpandida(recetaExpandida === receta.id ? null : receta.id)}
-                    style={{ backgroundColor: 'white', borderRadius: '24px', padding: '20px', cursor: 'pointer', boxShadow: '0 6px 20px rgba(0,0,0,0.05)' }}
+              <input 
+                type="text" 
+                placeholder="Buscar por receta o ingrediente..." 
+                value={busquedaReceta}
+                onChange={(e) => setBusquedaReceta(e.target.value)}
+                style={{ padding: '16px', fontSize: '16px', borderRadius: '16px', border: 'none', marginBottom: '20px', width: '100%', boxSizing: 'border-box', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', outline: 'none' }}
+              />
+              
+              <div style={{ display: 'flex', overflowX: 'auto', whiteSpace: 'nowrap', gap: '10px', paddingBottom: '15px', marginBottom: '10px', scrollbarWidth: 'none' }}>
+                {categorias.map(cat => (
+                  <button 
+                    key={cat}
+                    onClick={() => setCategoriaActiva(cat)}
+                    style={{ 
+                      padding: '10px 20px', 
+                      borderRadius: '20px', 
+                      border: 'none', 
+                      cursor: 'pointer',
+                      fontSize: '15px',
+                      fontWeight: 'bold',
+                      transition: 'all 0.2s',
+                      backgroundColor: categoriaActiva === cat ? '#28a745' : 'white',
+                      color: categoriaActiva === cat ? 'white' : '#555',
+                      boxShadow: '0 4px 10px rgba(0,0,0,0.04)'
+                    }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ flex: 1, paddingRight: '15px' }}>
-                        <h3 style={{ margin: '0 0 8px 0', fontSize: '19px', color: '#1a1a1a', fontWeight: '800' }}>{receta.nombre}</h3>
-                        <span style={{ fontSize: '12px', backgroundColor: '#fff3e0', color: '#e65100', padding: '5px 10px', borderRadius: '8px', fontWeight: 'bold' }}>
-                          {receta.categoria}
-                        </span>
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* CONTENEDOR DE LA LISTA (Este es el único que hace scroll) */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 40px 20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                {recetasFiltradas.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: '#888', marginTop: '20px' }}>No hay recetas en esta categoría.</p>
+                ) : (
+                  recetasFiltradas.map(receta => (
+                    <div 
+                      key={receta.id} 
+                      onClick={() => setRecetaExpandida(recetaExpandida === receta.id ? null : receta.id)}
+                      style={{ backgroundColor: 'white', borderRadius: '24px', padding: '20px', cursor: 'pointer', boxShadow: '0 6px 20px rgba(0,0,0,0.05)' }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ flex: 1, paddingRight: '15px' }}>
+                          <h3 style={{ margin: '0 0 8px 0', fontSize: '19px', color: '#1a1a1a', fontWeight: '800' }}>{receta.nombre}</h3>
+                          <span style={{ fontSize: '12px', backgroundColor: '#fff3e0', color: '#e65100', padding: '5px 10px', borderRadius: '8px', fontWeight: 'bold' }}>
+                            {receta.categoria}
+                          </span>
+                        </div>
+                        
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleAñadirReceta(receta); }}
+                          style={{ width: '45px', height: '45px', background: 'linear-gradient(135deg, #28a745 0%, #208838 100%)', color: 'white', border: 'none', borderRadius: '14px', fontSize: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 10px rgba(40,167,69,0.3)' }}
+                          title="Añadir a la lista"
+                        >
+                          +
+                        </button>
                       </div>
                       
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleAñadirReceta(receta); }}
-                        style={{ width: '45px', height: '45px', background: 'linear-gradient(135deg, #28a745 0%, #208838 100%)', color: 'white', border: 'none', borderRadius: '14px', fontSize: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 10px rgba(40,167,69,0.3)' }}
-                        title="Añadir a la lista"
-                      >
-                        +
-                      </button>
+                      {recetaExpandida === receta.id && (
+                        <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #f0f2f5', cursor: 'default' }} onClick={e => e.stopPropagation()}>
+                          <h4 style={{ margin: '0 0 12px 0', color: '#444', fontSize: '15px', fontWeight: '800' }}>🛒 Ingredientes:</h4>
+                          <ul style={{ margin: '0 0 25px 0', paddingLeft: '20px', color: '#555', fontSize: '15px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                            {receta.ingredientes.map((ingrediente, idx) => (
+                              <li key={idx}>{ingrediente.nombre}</li>
+                            ))}
+                          </ul>
+                          <h4 style={{ margin: '0 0 12px 0', color: '#444', fontSize: '15px', fontWeight: '800' }}>👨‍🍳 Preparación:</h4>
+                          <p style={{ margin: 0, color: '#555', fontSize: '15px', lineHeight: '1.7', whiteSpace: 'pre-line' }}>
+                            {receta.instrucciones || "No hay instrucciones para esta receta."}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    
-                    {recetaExpandida === receta.id && (
-                      <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #f0f2f5', cursor: 'default' }} onClick={e => e.stopPropagation()}>
-                        <h4 style={{ margin: '0 0 12px 0', color: '#444', fontSize: '15px', fontWeight: '800' }}>🛒 Ingredientes:</h4>
-                        <ul style={{ margin: '0 0 25px 0', paddingLeft: '20px', color: '#555', fontSize: '15px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                          {receta.ingredientes.map((ingrediente, idx) => (
-                            <li key={idx}>{ingrediente.nombre}</li>
-                          ))}
-                        </ul>
-                        <h4 style={{ margin: '0 0 12px 0', color: '#444', fontSize: '15px', fontWeight: '800' }}>👨‍🍳 Preparación:</h4>
-                        <p style={{ margin: 0, color: '#555', fontSize: '15px', lineHeight: '1.7', whiteSpace: 'pre-line' }}>
-                          {receta.instrucciones || "No hay instrucciones para esta receta."}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
             </div>
           </div>
         )}
