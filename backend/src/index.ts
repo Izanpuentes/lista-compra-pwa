@@ -52,6 +52,21 @@ app.get('/api/houses/:houseId/items', async (req, res) => {
   }
 });
 
+// Ruta para obtener todas las recetas con sus ingredientes
+app.get('/api/recetas', async (req, res) => {
+  try {
+    const recetas = await prisma.receta.findMany({
+      include: {
+        ingredientes: true // Esto es magia pura de Prisma, te trae los ingredientes automáticamente
+      }
+    });
+    res.json(recetas);
+  } catch (error) {
+    console.error("Error al obtener recetas:", error);
+    res.status(500).json({ error: "Error al cargar el recetario" });
+  }
+});
+
 const frontendPath = path.join(__dirname, '../../frontend/dist');
 app.use(express.static(frontendPath));
 

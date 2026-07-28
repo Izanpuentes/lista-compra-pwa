@@ -12,6 +12,21 @@ interface ShoppingItem {
   creador: string;
 }
 
+// --- NUEVAS INTERFACES Y DATOS PARA RECETAS ---
+interface Ingrediente {
+  nombre: string;
+}
+
+interface Receta {
+  id: string;
+  nombre: string;
+  categoria: string;
+  tiempo: string;
+  ingredientes: Ingrediente[];
+}
+
+const CATEGORIAS_RECETAS = ['Todas', 'Carnes', 'Saludable', 'Pasta', 'Pescados', 'Postres'];
+
 const socket = io()
 
 const RUTAS_SUPERMERCADO = [
@@ -37,6 +52,13 @@ function App() {
 
   const recognitionRef = useRef<any>(null);
 
+  // --- ESTADOS DEL RECETARIO ---
+  const [isRecetarioOpen, setIsRecetarioOpen] = useState(false);
+  const [busquedaReceta, setBusquedaReceta] = useState('');
+  const [categoriaReceta, setCategoriaReceta] = useState('Todas');
+
+  const [recetasBaseDatos, setRecetasBaseDatos] = useState<Receta[]>([]);
+
   useEffect(() => {
     socket.emit('joinHouse', houseId)
 
@@ -54,6 +76,11 @@ function App() {
           setItems(JSON.parse(backup));
         }
       });
+
+    fetch('/api/recetas')
+      .then(res => res.json())
+      .then(data => setRecetasBaseDatos(data))
+      .catch(err => console.error("Error cargando recetas:", err));
 
     socket.on('itemAdded', (newItem) => setItems((prev) => [newItem, ...prev]))
     socket.on('item-toggled', (updatedItem) => setItems((prev) => prev.map(item => item.id === updatedItem.id ? updatedItem : item)))
@@ -152,6 +179,43 @@ function App() {
     };
 
     recognition.start();
+  };
+
+  const handleAñadirReceta = (receta: Receta) => {
+    if (!activeSupermarket) {
+      alert("⚠️ Por favor, selecciona un supermercado antes de añadir una receta.");
+      setIsRecetarioOpen(false);
+      return;
+    }
+
+    receta.ingredientes.forEach(ingrediente => {
+      const categoriaDetectada = categorizarProducto(ingrediente.nombre);
+      const nuevoItemData = {
+        name: ingrediente.nombre,
+        houseId: houseId,
+        supermercado: activeSupermarket,
+        categoria: categoriaDetectada,
+        creador: currentUser
+      };
+
+      // Usamos tu función offline para que sea a prueba de fallos
+      emitirOSincronizar('addItem', nuevoItemData);
+      
+      // Actualizamos la pantalla de inmediato (efecto visual rápido)
+      const itemOffline: ShoppingItem = {
+        id: 'recipe-item-' + Date.now() + Math.random(),
+        name: ingrediente.nombre,
+        comprado: false,
+        houseId: houseId,
+        supermercado: activeSupermarket,
+        categoria: categoriaDetectada,
+        creador: currentUser!
+      };
+      setItems(prev => [itemOffline, ...prev]);
+    });
+
+    alert(`✅ ¡Ingredientes de "${receta.nombre}" añadidos a la lista de ${activeSupermarket}!`);
+    setIsRecetarioOpen(false); // Cerramos el recetario para seguir comprando
   };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -364,6 +428,15 @@ function App() {
           </>
         )}
 
+        {/* Botón flotante del Recetario */}
+              <button 
+                onClick={() => setIsRecetarioOpen(true)} 
+                style={{ WebkitAppearance: 'none', position: 'fixed', bottom: '20px', left: '20px', width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#ff9800', color: 'white', border: 'none', fontSize: '24px', boxShadow: '0 4px 8px rgba(0,0,0,0.2)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 999 }}
+                title="Abrir Recetario"
+              >
+                📖
+              </button>
+
         <button onClick={() => setIsSuggestionOpen(true)} style={{ WebkitAppearance: 'none', position: 'fixed', bottom: '20px', right: '20px', width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#007bff', color: 'white', border: 'none', fontSize: '24px', boxShadow: '0 4px 8px rgba(0,0,0,0.2)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>💡</button>
 
         {isSuggestionOpen && (
@@ -375,6 +448,71 @@ function App() {
                 <button onClick={() => setIsSuggestionOpen(false)} style={{ WebkitAppearance: 'none', padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: '#f0f0f0', color: '#000' }}>Cancelar</button>
                 <button onClick={handleSendSuggestion} style={{ WebkitAppearance: 'none', padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: '#28a745', color: 'white' }}>Enviar</button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- PANTALLA DEL RECETARIO --- */}
+        {isRecetarioOpen && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'white', zIndex: 1100, display: 'flex', flexDirection: 'column', padding: '20px', overflowY: 'auto' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0 }}>📖 Recetario</h2>
+              <button onClick={() => setIsRecetarioOpen(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}>❌</button>
+            </div>
+
+            {/* Buscador y Filtro */}
+            <input 
+              type="text" 
+              placeholder="Ej: Pollo, ensalada..." 
+              value={busquedaReceta}
+              onChange={(e) => setBusquedaReceta(e.target.value)}
+              style={{ padding: '12px', fontSize: '16px', borderRadius: '8px', border: '1px solid #ccc', marginBottom: '10px', width: '100%', boxSizing: 'border-box' }}
+            />
+            
+            <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px', marginBottom: '10px' }}>
+              {CATEGORIAS_RECETAS.map(cat => (
+                <button 
+                  key={cat}
+                  onClick={() => setCategoriaReceta(cat)}
+                  style={{ 
+                    padding: '8px 16px', borderRadius: '20px', border: 'none', whiteSpace: 'nowrap', cursor: 'pointer',
+                    backgroundColor: categoriaReceta === cat ? '#007bff' : '#f0f0f0',
+                    color: categoriaReceta === cat ? 'white' : 'black'
+                  }}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Lista de Recetas */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              {recetasBaseDatos
+                .filter(r => categoriaReceta === 'Todas' || r.categoria === categoriaReceta)
+                .filter(r => r.nombre.toLowerCase().includes(busquedaReceta.toLowerCase()) || r.ingredientes.some(i => i.nombre.toLowerCase().includes(busquedaReceta.toLowerCase())))
+                .map(receta => (
+                <div key={receta.id} style={{ border: '1px solid #eee', borderRadius: '12px', padding: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <h3 style={{ margin: 0 }}>{receta.nombre}</h3>
+                    <span style={{ fontSize: '14px', color: '#666' }}>⏱ {receta.tiempo}</span>
+                  </div>
+                  <p style={{ margin: '0 0 15px 0', fontSize: '14px', color: '#555' }}>
+                    <strong>Ingredientes:</strong> {receta.ingredientes.map(i => i.nombre).join(', ')}
+                  </p>
+                  <button 
+                    onClick={() => handleAñadirReceta(receta)}
+                    style={{ width: '100%', padding: '12px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    ➕ Añadir ingredientes a la lista
+                  </button>
+                </div>
+              ))}
+              
+              {/* Mensaje si no hay resultados */}
+              {recetasBaseDatos.filter(r => (categoriaReceta === 'Todas' || r.categoria === categoriaReceta) && (r.nombre.toLowerCase().includes(busquedaReceta.toLowerCase()) || r.ingredientes.some(i => i.nombre.toLowerCase().includes(busquedaReceta.toLowerCase())))).length === 0 && (
+                <p style={{ textAlign: 'center', color: '#888', marginTop: '20px' }}>No hay recetas que coincidan con tu búsqueda.</p>
+              )}
             </div>
           </div>
         )}

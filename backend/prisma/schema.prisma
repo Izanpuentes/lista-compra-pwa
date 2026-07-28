@@ -39,3 +39,18 @@ model Item {
   categoria    String   @default("Otros")
   creador      String   @default("Anónimo")
 }
+
+model Receta {
+  id           String        @id @default(uuid())
+  nombre       String
+  categoria    String
+  tiempo       String
+  ingredientes Ingrediente[]
+}
+
+model Ingrediente {
+  id       String @id @default(uuid())
+  nombre   String
+  recetaId String
+  receta   Receta @relation(fields: [recetaId], references: [id], onDelete: Cascade)
+}

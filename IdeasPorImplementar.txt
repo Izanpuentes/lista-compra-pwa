@@ -1,3 +1,5 @@
-Hay que implementar el sistema de guardado offline, con lo que conseguimos que la aplicación funcione offline y cuando tengamos conexión se actualice todo
+Tengo que arreglar para que mis padres puedan utilizar el micrófono para hablar
 
 Implementar una lista de recetas y que se puedan añadir todos los elementos dando a un botón
+
+Tengo que hacer que el ordenamiento de la lista sea independiente de cada supermercado, ya que creo que de momento el orden siempre es el del Aldi
