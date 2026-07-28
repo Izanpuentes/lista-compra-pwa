@@ -1,5 +1,5 @@
-Tengo que arreglar para que mis padres puedan utilizar el micrófono para hablar
-
-Implementar una lista de recetas y que se puedan añadir todos los elementos dando a un botón
-
 Tengo que hacer que el ordenamiento de la lista sea independiente de cada supermercado, ya que creo que de momento el orden siempre es el del Aldi
+
+Tengo que añadir un calendario para que mis padres puedan organizar las comidas de la semana
+
+Hay que mejorar el recetario, el como se vé, en los subrutpos que están divididos, en como se ven los ingredientes, etc

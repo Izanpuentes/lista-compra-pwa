@@ -44,7 +44,7 @@ model Receta {
   id           String        @id @default(uuid())
   nombre       String
   categoria    String
-  tiempo       String
+  instrucciones String?
   ingredientes Ingrediente[]
 }
 
