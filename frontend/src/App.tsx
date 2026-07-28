@@ -57,16 +57,27 @@ function App() {
   // NUEVOS ESTADOS Y LÓGICA (Arreglado)
   const [categoriaActiva, setCategoriaActiva] = useState('Todas');
   const [recetaExpandida, setRecetaExpandida] = useState<string | null>(null);
-
   const [recetaPendiente, setRecetaPendiente] = useState<Receta | null>(null);
+  
+  // AQUÍ ESTÁ LA VARIABLE QUE FALTABA
+  const [busquedaReceta, setBusquedaReceta] = useState(''); 
 
   const categorias = ['Todas', 'Legumbres', 'Carnes', 'Pescados', 'Pastas', 'Huevos', 'Sopas y Cremas', 'Verduras', 'Ensaladas', 'Arroces', 'Tapas'];
-
-  // Filtramos usando la variable correcta (recetasBaseDatos)
-  const recetasFiltradas = categoriaActiva === 'Todas' 
-    ? recetasBaseDatos 
-    : recetasBaseDatos.filter(receta => receta.categoria === categoriaActiva);
-
+  
+  // LÓGICA DE FILTRADO DOBLE (Por categoría y por barra de búsqueda)
+  const recetasFiltradas = recetasBaseDatos.filter(receta => {
+    // 1. Comprueba si coincide la categoría
+    const coincideCategoria = categoriaActiva === 'Todas' || receta.categoria === categoriaActiva;
+    
+    // 2. Comprueba si lo escrito en el buscador está en el nombre o en los ingredientes
+    const termino = busquedaReceta.toLowerCase();
+    const coincideBusqueda = receta.nombre.toLowerCase().includes(termino) || 
+                             receta.ingredientes.some(i => i.nombre.toLowerCase().includes(termino));
+    
+    // Solo muestra la receta si pasa los dos filtros
+    return coincideCategoria && coincideBusqueda;
+  });
+  
   useEffect(() => {
     socket.emit('joinHouse', houseId)
 
@@ -163,32 +174,23 @@ function App() {
   };
 
   // Función 2: Hace el trabajo real de guardar los ingredientes
+  // Función 2: Hace el trabajo real de guardar los ingredientes
   const procesarAñadirReceta = (receta: Receta, supermercadoDestino: string) => {
     receta.ingredientes.forEach(ingrediente => {
       const categoriaDetectada = categorizarProducto(ingrediente.nombre);
       const nuevoItemData = {
         name: ingrediente.nombre,
         houseId: houseId,
-        supermercado: supermercadoDestino, // Usamos el destino elegido
+        supermercado: supermercadoDestino,
         categoria: categoriaDetectada,
         creador: currentUser
       };
 
+      // Solo emitimos al servidor. El servidor nos devolverá la señal y los pintará 1 sola vez.
       emitirOSincronizar('addItem', nuevoItemData);
-      
-      const itemOffline: ShoppingItem = {
-        id: 'recipe-item-' + Date.now() + Math.random(),
-        name: ingrediente.nombre,
-        comprado: false,
-        houseId: houseId,
-        supermercado: supermercadoDestino,
-        categoria: categoriaDetectada,
-        creador: currentUser!
-      };
-      setItems(prev => [itemOffline, ...prev]);
     });
 
-    alert(`✅ ¡Ingredientes añadidos a la lista de ${supermercadoDestino}!`);
+    alert(`✅ ¡Ingredientes de "${receta.nombre}" añadidos a ${supermercadoDestino}!`);
     setRecetaPendiente(null); // Cerramos el modal de elección
     setIsRecetarioOpen(false); // Cerramos el recetario para seguir comprando
   };
@@ -257,128 +259,201 @@ function App() {
   const filteredItems = items.filter(item => item.supermercado === activeSupermarket);
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: getBackgroundColor(), transition: 'background-color 0.3s ease' }}>
-      <div style={{ maxWidth: '500px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif', paddingBottom: '80px' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: getBackgroundColor(), transition: 'background-color 0.4s ease', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      <div style={{ maxWidth: '500px', margin: '0 auto', padding: '1.5rem', paddingBottom: '100px' }}>
         
-        {/* --- PANTALLA PRINCIPAL (Supermercados o Lista) --- */}
+        {/* --- PANTALLA PRINCIPAL (Supermercados) --- */}
         {!activeSupermarket && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '50px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h1 style={{ textAlign: 'center', margin: 0 }}>¿Dónde vamos a comprar?</h1>
-              <div style={{ fontSize: '14px', color: '#666', cursor: 'pointer' }} onClick={() => { localStorage.removeItem('listaCompraUser'); setCurrentUser(null); }}>
-                👤 {currentUser} (Cambiar)
+          <div style={{ display: 'flex', flexDirection: 'column', marginTop: '30px', animation: 'fadeIn 0.3s ease-in-out' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '35px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <h1 style={{ margin: 0, fontSize: '32px', color: '#1a1a1a', fontWeight: '800', letterSpacing: '-0.5px' }}>Tus Listas</h1>
+                <span style={{ color: '#666', fontSize: '16px', marginTop: '4px' }}>¿Dónde vamos a comprar, <strong>{currentUser}</strong>?</span>
               </div>
+              <button 
+                onClick={() => { localStorage.removeItem('listaCompraUser'); setCurrentUser(null); }}
+                style={{ background: 'white', border: 'none', padding: '10px 14px', borderRadius: '12px', cursor: 'pointer', color: '#444', fontWeight: 'bold', fontSize: '14px', boxShadow: '0 4px 10px rgba(0,0,0,0.06)' }}
+              >
+                👤 Cambiar
+              </button>
             </div>
-            <button onClick={() => setActiveSupermarket('aldi')} style={{ WebkitAppearance: 'none', padding: '20px', fontSize: '24px', backgroundColor: '#005b9f', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Aldi</button>
-            <button onClick={() => setActiveSupermarket('mercadona')} style={{ WebkitAppearance: 'none', padding: '20px', fontSize: '24px', backgroundColor: '#00824b', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Mercadona</button>
-            <button onClick={() => setActiveSupermarket('lidl')} style={{ WebkitAppearance: 'none', padding: '20px', fontSize: '24px', backgroundColor: '#fff000', color: '#005b9f', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Lidl</button>
-            <button onClick={() => setActiveSupermarket('costco')} style={{ WebkitAppearance: 'none', padding: '20px', fontSize: '24px', backgroundColor: '#e31837', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Costco</button>
+            
+            {/* Cuadrícula moderna de supermercados */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <button onClick={() => setActiveSupermarket('aldi')} style={{ WebkitAppearance: 'none', padding: '30px 10px', fontSize: '20px', background: 'linear-gradient(135deg, #005b9f 0%, #003f75 100%)', color: 'white', border: 'none', borderRadius: '24px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', boxShadow: '0 10px 20px rgba(0,91,159,0.25)', transition: 'transform 0.1s' }}>
+                <span style={{ fontSize: '34px', background: 'rgba(255,255,255,0.15)', padding: '16px', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛍️</span>
+                Aldi
+              </button>
+              
+              <button onClick={() => setActiveSupermarket('mercadona')} style={{ WebkitAppearance: 'none', padding: '30px 10px', fontSize: '20px', background: 'linear-gradient(135deg, #00824b 0%, #005c35 100%)', color: 'white', border: 'none', borderRadius: '24px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', boxShadow: '0 10px 20px rgba(0,130,75,0.25)' }}>
+                <span style={{ fontSize: '34px', background: 'rgba(255,255,255,0.15)', padding: '16px', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🧺</span>
+                Mercadona
+              </button>
+
+              <button onClick={() => setActiveSupermarket('lidl')} style={{ WebkitAppearance: 'none', padding: '30px 10px', fontSize: '20px', background: 'linear-gradient(135deg, #ffd700 0%, #f0b400 100%)', color: '#003f75', border: 'none', borderRadius: '24px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', boxShadow: '0 10px 20px rgba(255,215,0,0.3)' }}>
+                <span style={{ fontSize: '34px', background: 'rgba(0,63,117,0.1)', padding: '16px', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</span>
+                Lidl
+              </button>
+
+              <button onClick={() => setActiveSupermarket('costco')} style={{ WebkitAppearance: 'none', padding: '30px 10px', fontSize: '20px', background: 'linear-gradient(135deg, #e31837 0%, #a61027 100%)', color: 'white', border: 'none', borderRadius: '24px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', boxShadow: '0 10px 20px rgba(227,24,55,0.25)' }}>
+                <span style={{ fontSize: '34px', background: 'rgba(255,255,255,0.15)', padding: '16px', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📦</span>
+                Costco
+              </button>
+            </div>
           </div>
         )}
 
+        {/* --- PANTALLA DE LA LISTA DE LA COMPRA --- */}
         {activeSupermarket && (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px' }}>
-              <button onClick={() => setActiveSupermarket(null)} style={{ WebkitAppearance: 'none', padding: '8px 12px', fontSize: '20px', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', backgroundColor: 'white', color: '#000' }}>⬅️ Atrás</button>
-              <h1 style={{ margin: 0, textTransform: 'capitalize' }}>🛒 {activeSupermarket}</h1>
+          <div>
+            
+            {/* Cabecera de la lista */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+              <button onClick={() => setActiveSupermarket(null)} style={{ WebkitAppearance: 'none', padding: '10px 14px', fontSize: '16px', cursor: 'pointer', borderRadius: '14px', border: 'none', backgroundColor: '#f0f2f5', color: '#444', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                ⬅️ <span style={{ display: 'none', '@media (min-width: 400px)': { display: 'inline' } } as any}>Atrás</span>
+              </button>
+              <h1 style={{ margin: 0, textTransform: 'capitalize', fontSize: '22px', fontWeight: '800', color: '#1a1a1a', flex: 1, textAlign: 'center', paddingRight: '40px' }}>
+                {activeSupermarket}
+              </h1>
             </div>
             
-            <form onSubmit={handleAddItem} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+            {/* Formulario para añadir (Tarjeta Blanca) */}
+            <form onSubmit={handleAddItem} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '35px', backgroundColor: 'white', padding: '20px', borderRadius: '24px', boxShadow: '0 8px 25px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
                 <input 
                   type="text" 
                   value={newItemName}
                   onChange={handleNameChange}
-                  placeholder={`Añadir a ${activeSupermarket}...`} 
-                  style={{ flex: 1, padding: '12px', fontSize: '16px', borderRadius: '8px', border: '1px solid #ccc', WebkitAppearance: 'none', minWidth: 0 }}
+                  placeholder={`¿Qué falta en ${activeSupermarket}?`} 
+                  style={{ flex: 1, padding: '16px', fontSize: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', WebkitAppearance: 'none', minWidth: 0, outline: 'none' }}
                 />
                 <button 
                   type="button" 
                   onClick={toggleListening} 
-                  style={{ WebkitAppearance: 'none', padding: '12px 15px', fontSize: '20px', cursor: 'pointer', backgroundColor: isListening ? '#ff4d4f' : '#e0e0e0', color: isListening ? 'white' : 'black', border: '1px solid #ccc', borderRadius: '8px', flexShrink: 0, transition: 'all 0.3s ease' }}
+                  style={{ WebkitAppearance: 'none', width: '56px', height: '56px', fontSize: '22px', cursor: 'pointer', backgroundColor: isListening ? '#ff4d4f' : '#f0f2f5', color: isListening ? 'white' : 'black', border: 'none', borderRadius: '16px', flexShrink: 0, transition: 'all 0.3s ease', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: isListening ? '0 4px 15px rgba(255,77,79,0.3)' : 'none' }}
                 >
                   {isListening ? '🔴' : '🎙️'}
                 </button>
               </div>
-              <button type="submit" style={{ WebkitAppearance: 'none', padding: '12px', fontSize: '16px', cursor: 'pointer', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', width: '100%' }}>➕ Añadir a la lista</button>
-              <select value={newItemCategory} onChange={(e) => setNewItemCategory(e.target.value)} style={{ padding: '12px', fontSize: '16px', borderRadius: '8px', border: '1px solid #ccc', WebkitAppearance: 'none', backgroundColor: '#fff', color: '#000', width: '100%' }}>
+              <select value={newItemCategory} onChange={(e) => setNewItemCategory(e.target.value)} style={{ padding: '16px', fontSize: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', WebkitAppearance: 'none', color: '#444', width: '100%', outline: 'none', fontWeight: '500' }}>
                 {RUTAS_SUPERMERCADO.map(cat => <option key={cat} value={cat}>{cat}</option>)}
               </select>
+              <button type="submit" style={{ WebkitAppearance: 'none', padding: '16px', fontSize: '16px', cursor: 'pointer', background: 'linear-gradient(135deg, #28a745 0%, #208838 100%)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 'bold', width: '100%', boxShadow: '0 6px 15px rgba(40,167,69,0.25)' }}>
+                ➕ Añadir al carrito
+              </button>
             </form>
 
-            <h3>🛒 Carro Lista de la Compra</h3>
+            {/* Listado de Productos por Categoría (Estilo Tarjetas) */}
             {RUTAS_SUPERMERCADO.map(categoria => {
               const itemsDeEstaCategoria = filteredItems.filter(item => !item.comprado && item.categoria === categoria);
               if (itemsDeEstaCategoria.length === 0) return null; 
+              
               return (
-                <div key={categoria} style={{ marginBottom: '20px' }}>
-                  <h4 style={{ margin: '0 0 10px 0', borderBottom: '2px solid rgba(0,0,0,0.1)', paddingBottom: '5px', color: '#333' }}>📍 {categoria}</h4>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                <div key={categoria} style={{ marginBottom: '25px' }}>
+                  <h4 style={{ margin: '0 0 12px 10px', color: '#666', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>
+                    📍 {categoria}
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {itemsDeEstaCategoria.map(item => (
-                      <li key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #ddd' }}>
-                        <span onClick={() => toggleItem(item)} style={{ cursor: 'pointer', flex: 1, fontSize: '18px' }}>{item.name} <span style={{ fontSize: '12px', color: '#888', marginLeft: '6px' }}>({item.creador})</span></span>
-                        <button onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }} style={{ WebkitAppearance: 'none', padding: '8px 12px', background: '#ff4d4f', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '16px' }}>🗑️</button>
-                      </li>
+                      <div key={item.id} onClick={() => toggleItem(item)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', backgroundColor: 'white', borderRadius: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', cursor: 'pointer' }}>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1 }}>
+                          {/* El falso Checkbox */}
+                          <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid #ddd', flexShrink: 0 }}></div>
+                          <span style={{ fontSize: '18px', color: '#222', fontWeight: '500' }}>
+                            {item.name} 
+                            <span style={{ fontSize: '12px', color: '#888', marginLeft: '10px', backgroundColor: '#f0f2f5', padding: '4px 8px', borderRadius: '10px', fontWeight: 'normal' }}>
+                              {item.creador}
+                            </span>
+                          </span>
+                        </div>
+
+                        <button onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }} style={{ WebkitAppearance: 'none', padding: '10px', background: '#fff0f0', color: '#ff4d4f', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          🗑️
+                        </button>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )
             })}
-            <hr style={{ borderColor: '#ddd', margin: '30px 0' }}/>
-            <h3>❌ Frecuentes</h3>
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-              {filteredItems.filter(item => item.comprado).map(item => (
-                <li key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #ddd' }}>
-                  <span onClick={() => toggleItem(item)} style={{ textDecoration: 'line-through', color: 'gray', opacity: 0.7, cursor: 'pointer', flex: 1, fontSize: '18px' }}>{item.name} <span style={{ fontSize: '12px', color: '#aaa', marginLeft: '6px' }}>({item.creador})</span></span>
-                  <button onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }} style={{ WebkitAppearance: 'none', padding: '8px 12px', background: '#ff4d4f', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '16px' }}>🗑️</button>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-
-        {/* --- BOTONES FLOTANTES --- */}
-        <button onClick={() => setIsRecetarioOpen(true)} style={{ WebkitAppearance: 'none', position: 'fixed', bottom: '20px', left: '20px', width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#ff9800', color: 'white', border: 'none', fontSize: '24px', boxShadow: '0 4px 8px rgba(0,0,0,0.2)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 999 }} title="Abrir Recetario">📖</button>
-        <button onClick={() => setIsSuggestionOpen(true)} style={{ WebkitAppearance: 'none', position: 'fixed', bottom: '20px', right: '20px', width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#007bff', color: 'white', border: 'none', fontSize: '24px', boxShadow: '0 4px 8px rgba(0,0,0,0.2)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>💡</button>
-
-        {/* --- MODAL SUGERENCIAS --- */}
-        {isSuggestionOpen && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', width: '90%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <h3 style={{ margin: 0 }}>Enviar sugerencia</h3>
-              <textarea value={suggestionText} onChange={(e) => setSuggestionText(e.target.value)} placeholder="¿Qué echas en falta en la app?" rows={4} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ccc', fontSize: '16px', resize: 'none', WebkitAppearance: 'none' }} />
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button onClick={() => setIsSuggestionOpen(false)} style={{ WebkitAppearance: 'none', padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: '#f0f0f0', color: '#000' }}>Cancelar</button>
-                <button onClick={handleSendSuggestion} style={{ WebkitAppearance: 'none', padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: '#28a745', color: 'white' }}>Enviar</button>
+            
+            {/* Lista de Frecuentes (Comprados) */}
+            <div style={{ marginTop: '40px' }}>
+              <h4 style={{ margin: '0 0 12px 10px', color: '#999', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>
+                ✅ Ya en el carro (Frecuentes)
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {filteredItems.filter(item => item.comprado).map(item => (
+                  <div key={item.id} onClick={() => toggleItem(item)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: '20px', cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1, opacity: 0.6 }}>
+                      {/* Checkbox marcado */}
+                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#28a745', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontSize: '14px', flexShrink: 0 }}>✓</div>
+                      <span style={{ textDecoration: 'line-through', fontSize: '18px', color: '#666', fontWeight: '500' }}>
+                        {item.name}
+                      </span>
+                    </div>
+                    <button onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }} style={{ WebkitAppearance: 'none', padding: '10px', background: 'transparent', color: '#ccc', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '16px' }}>
+                      🗑️
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         )}
 
-        {/* --- PANTALLA DEL RECETARIO (Acordeón e Interfaz Nueva) --- */}
+        {/* --- BOTONES FLOTANTES --- */}
+        <button onClick={() => setIsRecetarioOpen(true)} style={{ WebkitAppearance: 'none', position: 'fixed', bottom: '25px', left: '25px', width: '65px', height: '65px', borderRadius: '50%', background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)', color: 'white', border: 'none', fontSize: '28px', boxShadow: '0 8px 20px rgba(255,152,0,0.4)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 999 }} title="Abrir Recetario">📖</button>
+        <button onClick={() => setIsSuggestionOpen(true)} style={{ WebkitAppearance: 'none', position: 'fixed', bottom: '25px', right: '25px', width: '65px', height: '65px', borderRadius: '50%', background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)', color: 'white', border: 'none', fontSize: '28px', boxShadow: '0 8px 20px rgba(0,123,255,0.4)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>💡</button>
+
+        {/* --- MODAL SUGERENCIAS --- */}
+        {isSuggestionOpen && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+            <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '24px', width: '90%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+              <h3 style={{ margin: 0, fontSize: '20px', color: '#222' }}>Enviar sugerencia</h3>
+              <textarea value={suggestionText} onChange={(e) => setSuggestionText(e.target.value)} placeholder="¿Qué echas en falta en la app?" rows={4} style={{ padding: '15px', borderRadius: '16px', border: '2px solid #eee', fontSize: '16px', resize: 'none', WebkitAppearance: 'none', backgroundColor: '#fafafa', outline: 'none' }} />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                <button onClick={() => setIsSuggestionOpen(false)} style={{ WebkitAppearance: 'none', padding: '12px 20px', borderRadius: '14px', border: 'none', cursor: 'pointer', backgroundColor: '#f0f2f5', color: '#444', fontWeight: 'bold' }}>Cancelar</button>
+                <button onClick={handleSendSuggestion} style={{ WebkitAppearance: 'none', padding: '12px 20px', borderRadius: '14px', border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #28a745 0%, #208838 100%)', color: 'white', fontWeight: 'bold' }}>Enviar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- PANTALLA DEL RECETARIO --- */}
         {isRecetarioOpen && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'white', zIndex: 1100, display: 'flex', flexDirection: 'column', padding: '20px', overflowY: 'auto' }}>
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#f8f9fa', zIndex: 1100, display: 'flex', flexDirection: 'column', padding: '20px', overflowY: 'auto' }}>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0 }}>📖 Recetario</h2>
-              <button onClick={() => setIsRecetarioOpen(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}>❌</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+              <h2 style={{ margin: 0, fontSize: '24px', color: '#1a1a1a', fontWeight: '800' }}>📖 Recetario</h2>
+              <button onClick={() => setIsRecetarioOpen(false)} style={{ background: '#f0f2f5', border: 'none', fontSize: '18px', cursor: 'pointer', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>❌</button>
             </div>
 
-            {/* Categorías con Scroll Horizontal (Sin cortes) */}
-            <div style={{ display: 'flex', overflowX: 'auto', whiteSpace: 'nowrap', gap: '12px', paddingBottom: '15px', marginBottom: '15px', WebkitOverflowScrolling: 'touch' }}>
+            <input 
+              type="text" 
+              placeholder="Buscar por receta o ingrediente..." 
+              value={busquedaReceta}
+              onChange={(e) => setBusquedaReceta(e.target.value)}
+              style={{ padding: '16px', fontSize: '16px', borderRadius: '16px', border: 'none', marginBottom: '20px', width: '100%', boxSizing: 'border-box', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', outline: 'none' }}
+            />
+            
+            <div style={{ display: 'flex', overflowX: 'auto', whiteSpace: 'nowrap', gap: '10px', paddingBottom: '15px', marginBottom: '10px', scrollbarWidth: 'none' }}>
               {categorias.map(cat => (
                 <button 
                   key={cat}
                   onClick={() => setCategoriaActiva(cat)}
                   style={{ 
-                    padding: '8px 20px', 
-                    borderRadius: '25px', 
+                    padding: '10px 20px', 
+                    borderRadius: '20px', 
                     border: 'none', 
                     cursor: 'pointer',
+                    fontSize: '15px',
                     fontWeight: 'bold',
                     transition: 'all 0.2s',
-                    backgroundColor: categoriaActiva === cat ? '#ff9800' : '#f0f0f0',
-                    color: categoriaActiva === cat ? 'white' : '#333'
+                    backgroundColor: categoriaActiva === cat ? '#28a745' : 'white',
+                    color: categoriaActiva === cat ? 'white' : '#555',
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.04)'
                   }}
                 >
                   {cat}
@@ -386,7 +461,6 @@ function App() {
               ))}
             </div>
 
-            {/* Lista de Recetas (Acordeón) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', paddingBottom: '40px' }}>
               {recetasFiltradas.length === 0 ? (
                 <p style={{ textAlign: 'center', color: '#888', marginTop: '20px' }}>No hay recetas en esta categoría.</p>
@@ -395,73 +469,64 @@ function App() {
                   <div 
                     key={receta.id} 
                     onClick={() => setRecetaExpandida(recetaExpandida === receta.id ? null : receta.id)}
-                    style={{ border: '1px solid #e0e0e0', borderRadius: '12px', padding: '16px', backgroundColor: '#fff', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}
+                    style={{ backgroundColor: 'white', borderRadius: '24px', padding: '20px', cursor: 'pointer', boxShadow: '0 6px 20px rgba(0,0,0,0.05)' }}
                   >
-                    {/* Cabecera de la receta (Siempre visible) */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <h3 style={{ margin: '0 0 5px 0', fontSize: '18px', color: '#333' }}>{receta.nombre}</h3>
-                        <span style={{ fontSize: '12px', backgroundColor: '#fff3e0', color: '#e65100', padding: '4px 8px', borderRadius: '4px' }}>
+                      <div style={{ flex: 1, paddingRight: '15px' }}>
+                        <h3 style={{ margin: '0 0 8px 0', fontSize: '19px', color: '#1a1a1a', fontWeight: '800' }}>{receta.nombre}</h3>
+                        <span style={{ fontSize: '12px', backgroundColor: '#fff3e0', color: '#e65100', padding: '5px 10px', borderRadius: '8px', fontWeight: 'bold' }}>
                           {receta.categoria}
                         </span>
                       </div>
                       
                       <button 
-                        onClick={(e) => {
-                          e.stopPropagation(); // Evita que al dar al botón '+' se abra/cierre la receta
-                          handleAñadirReceta(receta);
-                        }}
-                        style={{ width: '40px', height: '40px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '50%', fontSize: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}
+                        onClick={(e) => { e.stopPropagation(); handleAñadirReceta(receta); }}
+                        style={{ width: '45px', height: '45px', background: 'linear-gradient(135deg, #28a745 0%, #208838 100%)', color: 'white', border: 'none', borderRadius: '14px', fontSize: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 10px rgba(40,167,69,0.3)' }}
                         title="Añadir a la lista"
                       >
                         +
                       </button>
                     </div>
                     
-                    {/* Interior Desplegable (Instrucciones e Ingredientes) */}
                     {recetaExpandida === receta.id && (
-                      <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #eee', cursor: 'default' }} onClick={e => e.stopPropagation()}>
-                        
-                        <h4 style={{ margin: '0 0 10px 0', color: '#444' }}>🛒 Ingredientes:</h4>
-                        <ul style={{ margin: '0 0 20px 0', paddingLeft: '20px', color: '#666', fontSize: '14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
+                      <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #f0f2f5', cursor: 'default' }} onClick={e => e.stopPropagation()}>
+                        <h4 style={{ margin: '0 0 12px 0', color: '#444', fontSize: '15px', fontWeight: '800' }}>🛒 Ingredientes:</h4>
+                        <ul style={{ margin: '0 0 25px 0', paddingLeft: '20px', color: '#555', fontSize: '15px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                           {receta.ingredientes.map((ingrediente, idx) => (
                             <li key={idx}>{ingrediente.nombre}</li>
                           ))}
                         </ul>
-
-                        <h4 style={{ margin: '0 0 10px 0', color: '#444' }}>👨‍🍳 Preparación:</h4>
-                        <p style={{ margin: 0, color: '#666', fontSize: '14px', lineHeight: '1.6', whiteSpace: 'pre-line' }}>
+                        <h4 style={{ margin: '0 0 12px 0', color: '#444', fontSize: '15px', fontWeight: '800' }}>👨‍🍳 Preparación:</h4>
+                        <p style={{ margin: 0, color: '#555', fontSize: '15px', lineHeight: '1.7', whiteSpace: 'pre-line' }}>
                           {receta.instrucciones || "No hay instrucciones para esta receta."}
                         </p>
-                        
                       </div>
                     )}
                   </div>
                 ))
               )}
             </div>
-            
           </div>
         )}
 
         {/* --- MODAL SELECCIONAR SUPERMERCADO PARA RECETA --- */}
         {recetaPendiente && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200 }}>
-            <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '16px', width: '90%', maxWidth: '350px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
-              <h3 style={{ margin: 0, textAlign: 'center', color: '#333', fontSize: '18px' }}>
-                ¿Dónde quieres comprar los ingredientes para "{recetaPendiente.nombre}"?
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200 }}>
+            <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '24px', width: '90%', maxWidth: '350px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+              <h3 style={{ margin: 0, textAlign: 'center', color: '#1a1a1a', fontSize: '20px', fontWeight: '800', lineHeight: '1.3' }}>
+                ¿Dónde quieres comprar para<br/>"<span style={{color: '#007bff'}}>{recetaPendiente.nombre}</span>"?
               </h3>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                <button onClick={() => procesarAñadirReceta(recetaPendiente, 'aldi')} style={{ WebkitAppearance: 'none', padding: '15px', fontSize: '18px', backgroundColor: '#005b9f', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>Aldi</button>
-                <button onClick={() => procesarAñadirReceta(recetaPendiente, 'mercadona')} style={{ WebkitAppearance: 'none', padding: '15px', fontSize: '18px', backgroundColor: '#00824b', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>Mercadona</button>
-                <button onClick={() => procesarAñadirReceta(recetaPendiente, 'lidl')} style={{ WebkitAppearance: 'none', padding: '15px', fontSize: '18px', backgroundColor: '#fff000', color: '#005b9f', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>Lidl</button>
-                <button onClick={() => procesarAñadirReceta(recetaPendiente, 'costco')} style={{ WebkitAppearance: 'none', padding: '15px', fontSize: '18px', backgroundColor: '#e31837', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>Costco</button>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '10px' }}>
+                <button onClick={() => procesarAñadirReceta(recetaPendiente, 'aldi')} style={{ WebkitAppearance: 'none', padding: '20px 10px', fontSize: '16px', background: 'linear-gradient(135deg, #005b9f 0%, #003f75 100%)', color: 'white', border: 'none', borderRadius: '16px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0,91,159,0.2)' }}>Aldi</button>
+                <button onClick={() => procesarAñadirReceta(recetaPendiente, 'mercadona')} style={{ WebkitAppearance: 'none', padding: '20px 10px', fontSize: '16px', background: 'linear-gradient(135deg, #00824b 0%, #005c35 100%)', color: 'white', border: 'none', borderRadius: '16px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0,130,75,0.2)' }}>Mercadona</button>
+                <button onClick={() => procesarAñadirReceta(recetaPendiente, 'lidl')} style={{ WebkitAppearance: 'none', padding: '20px 10px', fontSize: '16px', background: 'linear-gradient(135deg, #ffd700 0%, #f0b400 100%)', color: '#003f75', border: 'none', borderRadius: '16px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(255,215,0,0.2)' }}>Lidl</button>
+                <button onClick={() => procesarAñadirReceta(recetaPendiente, 'costco')} style={{ WebkitAppearance: 'none', padding: '20px 10px', fontSize: '16px', background: 'linear-gradient(135deg, #e31837 0%, #a61027 100%)', color: 'white', border: 'none', borderRadius: '16px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(227,24,55,0.2)' }}>Costco</button>
               </div>
 
               <button 
                 onClick={() => setRecetaPendiente(null)} 
-                style={{ WebkitAppearance: 'none', padding: '12px', marginTop: '5px', borderRadius: '10px', border: 'none', cursor: 'pointer', backgroundColor: '#f0f0f0', color: '#555', fontWeight: 'bold', fontSize: '16px' }}
+                style={{ WebkitAppearance: 'none', padding: '15px', marginTop: '10px', borderRadius: '16px', border: 'none', cursor: 'pointer', backgroundColor: '#f0f2f5', color: '#444', fontWeight: 'bold', fontSize: '16px' }}
               >
                 Cancelar
               </button>
