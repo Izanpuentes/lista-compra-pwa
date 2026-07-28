@@ -448,5 +448,125 @@
     "categoria": "Carnes",
     "instrucciones": "Trocear el conejo y salpimentar. En una cazuela amplia con buen aceite, dorar un par de cabezas de ajo sueltas (sin pelar). Retirar los ajos. Dorar muy bien los trozos de conejo a fuego medio-fuerte. Cuando esté dorado, volver a echar los ajos, añadir un vaso de vino blanco y vinagre, y reducir a fuego lento 20 min.",
     "ingredientes": ["Conejo troceado", "Ajo", "Vino blanco", "Vinagre", "Aceite de oliva", "Sal", "Pimienta negra"]
+  },
+  {
+    "nombre": "Arroz con Leche",
+    "categoria": "Postres",
+    "instrucciones": "Hervir leche con piel de limón, naranja y una rama de canela. Añadir el arroz y cocer a fuego muy lento durante 45 minutos removiendo constantemente. Cuando esté cremoso, añadir el azúcar, cocer 5 minutos más, retirar y dejar enfriar. Espolvorear con canela en polvo.",
+    "ingredientes": ["Leche entera", "Arroz bomba", "Azúcar", "Limón", "Naranja", "Canela en rama", "Canela en polvo"]
+  },
+  {
+    "nombre": "Flan de Huevo Casero",
+    "categoria": "Postres",
+    "instrucciones": "Hacer un caramelo con azúcar y agua y cubrir el fondo de las flaneras. Batir los huevos con azúcar y mezclar poco a poco con leche tibia. Verter en las flaneras y hornear al baño maría a 180°C durante 45 minutos. Dejar enfriar antes de desmoldar.",
+    "ingredientes": ["Huevos", "Leche entera", "Azúcar", "Agua"]
+  },
+  {
+    "nombre": "Tarta de la Abuela (Galletas y Chocolate)",
+    "categoria": "Postres",
+    "instrucciones": "Preparar natillas o flan de sobre. Fundir chocolate para postres con un poco de nata y mantequilla. Mojar ligeramente galletas María en leche. En un molde, alternar capas de galletas mojadas, natillas y chocolate. Terminar con chocolate y enfriar en la nevera 4 horas.",
+    "ingredientes": ["Galletas María", "Preparado para flan o natillas", "Chocolate para fundir", "Leche entera", "Nata líquida", "Mantequilla"]
+  },
+  {
+    "nombre": "Torrijas de Leche",
+    "categoria": "Postres",
+    "instrucciones": "Hervir leche con canela y cáscara de limón. Dejar templar. Cortar pan del día anterior en rebanadas gruesas. Empapar bien el pan en la leche, pasar por huevo batido y freír en abundante aceite caliente. Escurrir y rebozar en una mezcla de azúcar y canela.",
+    "ingredientes": ["Pan especial torrijas o pan duro", "Leche", "Huevos", "Azúcar", "Canela en rama", "Canela en polvo", "Limón", "Aceite para freír"]
+  },
+  {
+    "nombre": "Crema Catalana",
+    "categoria": "Postres",
+    "instrucciones": "Infusionar leche con canela y piel de limón. En un bol, batir yemas con azúcar y maicena. Verter la leche colada sobre las yemas sin dejar de remover. Volver al fuego lento hasta que espese (sin que hierva). Repartir en cazuelas de barro, enfriar y, antes de servir, espolvorear azúcar y quemar con un soplete.",
+    "ingredientes": ["Leche entera", "Yemas de huevo", "Azúcar", "Maicena", "Canela en rama", "Limón"]
+  },
+  {
+    "nombre": "Bizcocho de Yogur (Medida de vaso)",
+    "categoria": "Postres",
+    "instrucciones": "Usar el envase del yogur como medida. Batir 3 huevos con 2 medidas de azúcar. Añadir 1 yogur de limón, 1 medida de aceite y batir. Incorporar 3 medidas de harina y 1 sobre de levadura tamizadas. Mezclar bien y hornear a 180°C durante 35-40 minutos.",
+    "ingredientes": ["Yogur de limón", "Huevos", "Harina de trigo", "Azúcar", "Aceite de girasol", "Levadura química (Royal)", "Mantequilla (para el molde)"]
+  },
+  {
+    "nombre": "Natillas Caseras",
+    "categoria": "Postres",
+    "instrucciones": "Infusionar leche con limón y canela. Batir yemas de huevo con azúcar y un poco de maicena disuelta en leche fría. Mezclar todo y llevar a fuego suave removiendo sin parar hasta que espese ligeramente. Servir en cuencos con una galleta María encima y canela espolvoreada.",
+    "ingredientes": ["Leche", "Yemas de huevo", "Azúcar", "Maicena", "Limón", "Canela en rama", "Canela en polvo", "Galletas María"]
+  },
+  {
+    "nombre": "Tarta de Santiago",
+    "categoria": "Postres",
+    "instrucciones": "Batir huevos con azúcar hasta que espumen. Añadir ralladura de limón, una pizca de canela y la almendra molida mezclando suavemente con una espátula. Verter en un molde engrasado y hornear a 175°C unos 30 min. Enfriar y decorar con azúcar glas usando la cruz de Santiago como plantilla.",
+    "ingredientes": ["Almendra molida cruda", "Azúcar", "Huevos", "Limón", "Canela en polvo", "Azúcar glas"]
+  },
+  {
+    "nombre": "Leche Frita",
+    "categoria": "Postres",
+    "instrucciones": "Cocer leche con azúcar, canela y piel de limón. Disolver maicena en leche fría y añadir a la leche caliente, removiendo hasta que espese mucho. Verter en una fuente y dejar enfriar en la nevera hasta que solidifique. Cortar en cuadrados, pasar por harina y huevo, freír y rebozar en azúcar y canela.",
+    "ingredientes": ["Leche entera", "Maicena", "Azúcar", "Huevos", "Harina", "Canela en rama", "Canela en polvo", "Limón", "Aceite para freír"]
+  },
+  {
+    "nombre": "Manzanas Asadas",
+    "categoria": "Postres",
+    "instrucciones": "Lavar y descorazonar las manzanas (preferiblemente Reineta). Colocarlas en una fuente de horno. Poner en el hueco de cada una una nuez de mantequilla, una cucharadita de azúcar y un chorrito de coñac o vino dulce. Hornear a 200°C durante unos 35-40 minutos.",
+    "ingredientes": ["Manzanas (tipo Reineta o Golden)", "Azúcar", "Mantequilla", "Vino dulce o Coñac", "Canela en polvo"]
+  },
+  {
+    "nombre": "Peras al Vino Tinto",
+    "categoria": "Postres",
+    "instrucciones": "Pelar las peras dejando el rabito y un corte recto en la base para que se mantengan de pie. Ponerlas en una olla estrecha. Añadir vino tinto, azúcar, canela en rama y piel de naranja hasta casi cubrirlas. Cocer a fuego medio 30 min. Retirar las peras y reducir el líquido hasta que sea un sirope. Bañar las peras.",
+    "ingredientes": ["Peras (tipo Conferencia)", "Vino tinto", "Azúcar", "Canela en rama", "Naranja"]
+  },
+  {
+    "nombre": "Cuajada con Miel y Nueces",
+    "categoria": "Postres",
+    "instrucciones": "Calentar la leche (ideal de oveja) hasta los 37°C. Echar unas gotas de cuajo líquido en los vasitos. Verter la leche tibia rápidamente sobre el cuajo y no mover los vasos hasta que la leche solidifique (unos 15 min). Guardar en nevera. Servir con abundante miel y nueces troceadas.",
+    "ingredientes": ["Leche entera (de oveja o vaca)", "Cuajo líquido", "Miel", "Nueces peladas"]
+  },
+  {
+    "nombre": "Buñuelos de Viento",
+    "categoria": "Postres",
+    "instrucciones": "Hervir agua, mantequilla, sal y un poco de azúcar. Añadir la harina de golpe y remover hasta que la masa se despegue. Retirar y añadir huevos uno a uno mezclando bien. Freír pequeñas bolitas de masa en aceite a fuego medio (se darán la vuelta solos al hincharse). Rebozar en azúcar.",
+    "ingredientes": ["Harina", "Agua", "Mantequilla", "Huevos", "Azúcar", "Sal", "Aceite para freír"]
+  },
+  {
+    "nombre": "Tarta de Queso Fría (Sin horno)",
+    "categoria": "Postres",
+    "instrucciones": "Triturar galletas y mezclar con mantequilla fundida para hacer la base en un molde. Enfriar. Calentar un poco de leche y disolver gelatina neutra. Batir queso crema, nata líquida y azúcar, e incorporar la gelatina. Verter sobre la base y refrigerar 6 horas. Cubrir con mermelada de fresa o frambuesa.",
+    "ingredientes": ["Queso crema (tipo Philadelphia)", "Nata para montar", "Azúcar", "Gelatina neutra (hojas o polvo)", "Leche", "Galletas tipo Digestive", "Mantequilla", "Mermelada de frutos rojos"]
+  },
+  {
+    "nombre": "Macedonia de Frutas Naturales",
+    "categoria": "Postres",
+    "instrucciones": "Pelar y picar en dados pequeños la manzana, pera, plátano, kiwi, melocotón y fresas. Poner todo en un bol grande. Exprimir varias naranjas y verter el zumo sobre la fruta. Añadir una cucharada de azúcar si la fruta está ácida. Dejar macerar en la nevera al menos 2 horas antes de servir.",
+    "ingredientes": ["Manzanas", "Plátanos", "Peras", "Naranjas (para zumo)", "Kiwis", "Fresas o Melocotón", "Azúcar"]
+  },
+  {
+    "nombre": "Trufas de Chocolate Caseras",
+    "categoria": "Postres",
+    "instrucciones": "Calentar nata hasta que hierva. Retirar y volcar sobre chocolate negro troceado. Remover hasta fundir. Añadir un poco de mantequilla y mezclar. Dejar enfriar la mezcla (ganache) en la nevera varias horas hasta que esté dura. Hacer bolitas con las manos y rebozar en fideos de chocolate o cacao puro.",
+    "ingredientes": ["Chocolate para postres (fondant)", "Nata para montar", "Mantequilla", "Fideos de chocolate o cacao en polvo"]
+  },
+  {
+    "nombre": "Tocino de Cielo",
+    "categoria": "Postres",
+    "instrucciones": "Hacer un almíbar espeso hirviendo agua y azúcar durante 15 minutos. Dejar templar. Mezclar solo yemas de huevo y un huevo entero con cuidado de no hacer espuma. Añadir el almíbar en forma de hilo removiendo. Colar y verter en moldes caramelizados. Cocer al baño maría (en olla exprés o horno) unos 20 min.",
+    "ingredientes": ["Yemas de huevo", "Huevo", "Azúcar", "Agua"]
+  },
+  {
+    "nombre": "Pestiños Andaluces",
+    "categoria": "Postres",
+    "instrucciones": "Calentar aceite con cáscara de limón y anís en grano; enfriar y colar. Mezclar ese aceite con vino blanco y harina hasta hacer una masa que no se pegue. Reposar 30 min. Estirar, cortar en cuadrados y doblar dos esquinas hacia el centro. Freír en aceite y bañar en un almíbar caliente de miel y agua.",
+    "ingredientes": ["Harina de trigo", "Aceite de oliva", "Vino blanco", "Matalauva (Anís en grano)", "Limón", "Miel", "Aceite para freír"]
+  },
+  {
+    "nombre": "Quesada Pasiega Fácil",
+    "categoria": "Postres",
+    "instrucciones": "En un bol, mezclar yogur natural, huevos, azúcar, mantequilla derretida, harina, un poco de levadura y ralladura de limón. Batir todo con unas varillas hasta conseguir una crema homogénea. Verter en un molde engrasado y hornear a 180°C durante 45 minutos hasta que esté dorada por encima.",
+    "ingredientes": ["Yogur natural", "Huevos", "Azúcar", "Mantequilla", "Harina", "Ralladura de limón", "Levadura química"]
+  },
+  {
+    "nombre": "Sorbete de Limón al Cava",
+    "categoria": "Postres",
+    "instrucciones": "En una batidora de vaso o robot de cocina, añadir el helado de limón ligeramente descongelado, el cava muy frío y un chorrito de nata líquida para darle cremosidad. Triturar hasta que quede una mezcla homogénea y espumosa. Servir inmediatamente en copas (ideal para bajar comidas copiosas).",
+    "ingredientes": ["Helado de limón", "Cava (Brut o Semi-seco)", "Nata líquida"]
   }
 ]

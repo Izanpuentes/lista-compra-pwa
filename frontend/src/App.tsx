@@ -62,7 +62,7 @@ function App() {
   // AQUÍ ESTÁ LA VARIABLE QUE FALTABA
   const [busquedaReceta, setBusquedaReceta] = useState(''); 
 
-  const categorias = ['Todas', 'Legumbres', 'Carnes', 'Pescados', 'Pastas', 'Huevos', 'Sopas y Cremas', 'Verduras', 'Ensaladas', 'Arroces', 'Tapas'];
+  const categorias = ['Todas', 'Legumbres', 'Carnes', 'Pescados', 'Pastas', 'Huevos', 'Sopas y Cremas', 'Verduras', 'Ensaladas', 'Arroces', 'Tapas', 'Postres'];
   
   // LÓGICA DE FILTRADO DOBLE (Por categoría y por barra de búsqueda)
   const recetasFiltradas = recetasBaseDatos.filter(receta => {
