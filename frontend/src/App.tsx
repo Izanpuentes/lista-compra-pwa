@@ -41,17 +41,37 @@ function App() {
     socket.emit('joinHouse', houseId)
 
     fetch(`/api/houses/${houseId}/items`)
-      .then(res => {
-        if (!res.ok) throw new Error("Error en la respuesta del servidor")
-        return res.json()
+      .then(res => res.json())
+      .then(data => {
+        setItems(data);
+        // Guardamos una copia de seguridad actualizada
+        localStorage.setItem('backupItems', JSON.stringify(data)); 
       })
-      .then(data => setItems(data))
-      .catch(err => console.error("Error cargando items:", err))
+      .catch(err => {
+        console.error("Estás offline, cargando copia de seguridad local");
+        const backup = localStorage.getItem('backupItems');
+        if (backup) {
+          setItems(JSON.parse(backup));
+        }
+      });
 
     socket.on('itemAdded', (newItem) => setItems((prev) => [newItem, ...prev]))
     socket.on('item-toggled', (updatedItem) => setItems((prev) => prev.map(item => item.id === updatedItem.id ? updatedItem : item)))
     socket.on('itemDeleted', (deletedItemId) => setItems((prev) => prev.filter(item => item.id !== deletedItemId)))
     
+    // CUANDO VUELVE LA CONEXIÓN: Vaciar la cola offline
+    socket.on('connect', () => {
+      const colaOffline = JSON.parse(localStorage.getItem('colaSincronizacion') || '[]');
+      
+      if (colaOffline.length > 0) {
+        console.log("Internet recuperado. Sincronizando datos...");
+        colaOffline.forEach((accion: any) => {
+          socket.emit(accion.evento, accion.data);
+        });
+        localStorage.removeItem('colaSincronizacion');
+      }
+    });
+
     socket.on('suggestionSent', () => {
       alert("¡Sugerencia enviada correctamente!")
       setIsSuggestionOpen(false)
@@ -157,8 +177,25 @@ function App() {
     setNewItemCategory('Otros')
   }
 
+  // Función maestra para emitir o guardar en cola
+  const emitirOSincronizar = (evento: string, data: any) => {
+    if (socket.connected) {
+      socket.emit(evento, data);
+    } else {
+      // Guardamos la acción en el localStorage
+      const colaOffline = JSON.parse(localStorage.getItem('colaSincronizacion') || '[]');
+      colaOffline.push({ evento, data });
+      localStorage.setItem('colaSincronizacion', JSON.stringify(colaOffline));
+      console.log(`Guardado offline: ${evento}`);
+    }
+  };
+
   const toggleItem = (item: ShoppingItem) => socket.emit('toggle-item', { itemId: item.id, houseId: houseId, comprado: !item.comprado });
-  const handleDeleteItem = (itemId: string) => socket.emit('deleteItem', { houseId, itemId });
+  const handleDeleteItem = (itemId: string) => {
+    emitirOSincronizar('deleteItem', { houseId, itemId });
+    // Actualizamos la pantalla de inmediato para que el usuario lo vea borrado
+    setItems((prev) => prev.filter(item => item.id !== itemId));
+  };
   const handleSendSuggestion = () => {
     if (!suggestionText.trim()) return;
     socket.emit('sendSuggestion', { text: suggestionText, houseId });

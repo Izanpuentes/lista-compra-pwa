@@ -7,8 +7,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      devOptions: {
-        enabled: true // Permite probar la PWA en modo desarrollo
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'] // Permite probar la PWA en modo desarrollo
       },
       manifest: {
         name: 'Lista de la Compra',

@@ -1,0 +1,3 @@
+Hay que implementar el sistema de guardado offline, con lo que conseguimos que la aplicación funcione offline y cuando tengamos conexión se actualice todo
+
+Implementar una lista de recetas y que se puedan añadir todos los elementos dando a un botón
