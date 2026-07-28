@@ -47,7 +47,7 @@ function App() {
         // Guardamos una copia de seguridad actualizada
         localStorage.setItem('backupItems', JSON.stringify(data)); 
       })
-      .catch(err => {
+      .catch(() => {
         console.error("Estás offline, cargando copia de seguridad local");
         const backup = localStorage.getItem('backupItems');
         if (backup) {
