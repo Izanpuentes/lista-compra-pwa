@@ -21,9 +21,8 @@ interface Receta {
   id: string;
   nombre: string;
   categoria: string;
-  instrucciones: string; // Añadido
+  instrucciones: string;
   ingredientes: Ingrediente[];
-  // Quitamos 'tiempo' porque lo borramos de la base de datos
 }
 
 const socket = io()
@@ -34,7 +33,6 @@ const RUTAS_SUPERMERCADO = [
   'Enlatados', 'Chocolates y frutos secos', 'Higiene', 'Helados', 'Otros'
 ];
 
-// AÑADE ESTO JUSTO DEBAJO:
 const ORDEN_MERCADONA = [
   'Verduras y frutas',         // Frutas y verduras
   'Precocinados',              // Comida lista para llevar
@@ -73,27 +71,56 @@ function App() {
   const [isRecetarioOpen, setIsRecetarioOpen] = useState(false);
   const [recetasBaseDatos, setRecetasBaseDatos] = useState<Receta[]>([]);
   
-  // NUEVOS ESTADOS Y LÓGICA (Arreglado)
   const [categoriaActiva, setCategoriaActiva] = useState('Todas');
   const [recetaExpandida, setRecetaExpandida] = useState<string | null>(null);
   const [recetaPendiente, setRecetaPendiente] = useState<Receta | null>(null);
   
-  // AQUÍ ESTÁ LA VARIABLE QUE FALTABA
   const [busquedaReceta, setBusquedaReceta] = useState(''); 
 
   const categorias = ['Todas', 'Legumbres', 'Carnes', 'Pescados', 'Pastas', 'Huevos', 'Sopas y Cremas', 'Verduras', 'Ensaladas', 'Arroces', 'Tapas', 'Postres'];
   
+  // --- ESTADOS DEL CALENDARIO (MENÚ SEMANAL) ---
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [menuSemanal, setMenuSemanal] = useState(() => {
+    const guardado = localStorage.getItem('menuSemanalApp');
+    return guardado ? JSON.parse(guardado) : {
+      Lunes: { comida: '', cena: '' },
+      Martes: { comida: '', cena: '' },
+      Miércoles: { comida: '', cena: '' },
+      Jueves: { comida: '', cena: '' },
+      Viernes: { comida: '', cena: '' },
+      Sábado: { comida: '', cena: '' },
+      Domingo: { comida: '', cena: '' },
+    };
+  });
+
+  const handleMenuChange = (dia: string, tipo: 'comida' | 'cena', valor: string) => {
+    const nuevoMenu = {
+      ...menuSemanal,
+      [dia]: { ...menuSemanal[dia as keyof typeof menuSemanal], [tipo]: valor }
+    };
+    setMenuSemanal(nuevoMenu);
+    localStorage.setItem('menuSemanalApp', JSON.stringify(nuevoMenu));
+  };
+
+  // --- CONEXIÓN RECETARIO -> CALENDARIO ---
+  const [recetaParaCalendario, setRecetaParaCalendario] = useState<Receta | null>(null);
+  const [diaSeleccionado, setDiaSeleccionado] = useState('Lunes');
+  const [tipoComidaSeleccionado, setTipoComidaSeleccionado] = useState<'comida' | 'cena'>('comida');
+
+  const confirmarAñadirAlCalendario = () => {
+    if (!recetaParaCalendario) return;
+    handleMenuChange(diaSeleccionado, tipoComidaSeleccionado, recetaParaCalendario.nombre);
+    alert(`✅ "${recetaParaCalendario.nombre}" asignado al ${diaSeleccionado} para la ${tipoComidaSeleccionado}`);
+    setRecetaParaCalendario(null);
+  };
+
   // LÓGICA DE FILTRADO DOBLE (Por categoría y por barra de búsqueda)
   const recetasFiltradas = recetasBaseDatos.filter(receta => {
-    // 1. Comprueba si coincide la categoría
     const coincideCategoria = categoriaActiva === 'Todas' || receta.categoria === categoriaActiva;
-    
-    // 2. Comprueba si lo escrito en el buscador está en el nombre o en los ingredientes
     const termino = busquedaReceta.toLowerCase();
     const coincideBusqueda = receta.nombre.toLowerCase().includes(termino) || 
                              receta.ingredientes.some(i => i.nombre.toLowerCase().includes(termino));
-    
-    // Solo muestra la receta si pasa los dos filtros
     return coincideCategoria && coincideBusqueda;
   });
   
@@ -181,19 +208,14 @@ function App() {
     recognition.start();
   };
 
-  // Función 1: Comprueba si hay supermercado activo
   const handleAñadirReceta = (receta: Receta) => {
     if (!activeSupermarket) {
-      // Si no hay supermercado, guardamos la receta y abrimos el modal
       setRecetaPendiente(receta);
       return;
     }
-    // Si ya estamos dentro de uno, lo añadimos directamente
     procesarAñadirReceta(receta, activeSupermarket);
   };
 
-  // Función 2: Hace el trabajo real de guardar los ingredientes
-  // Función 2: Hace el trabajo real de guardar los ingredientes
   const procesarAñadirReceta = (receta: Receta, supermercadoDestino: string) => {
     receta.ingredientes.forEach(ingrediente => {
       const categoriaDetectada = categorizarProducto(ingrediente.nombre);
@@ -204,14 +226,12 @@ function App() {
         categoria: categoriaDetectada,
         creador: currentUser
       };
-
-      // Solo emitimos al servidor. El servidor nos devolverá la señal y los pintará 1 sola vez.
       emitirOSincronizar('addItem', nuevoItemData);
     });
 
     alert(`✅ ¡Ingredientes de "${receta.nombre}" añadidos a ${supermercadoDestino}!`);
-    setRecetaPendiente(null); // Cerramos el modal de elección
-    setIsRecetarioOpen(false); // Cerramos el recetario para seguir comprando
+    setRecetaPendiente(null); 
+    setIsRecetarioOpen(false); 
   };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -276,7 +296,6 @@ function App() {
   }
 
   const filteredItems = items.filter(item => item.supermercado === activeSupermarket);
-
   const categoriasAUsar = activeSupermarket === 'mercadona' ? ORDEN_MERCADONA : RUTAS_SUPERMERCADO;
 
   return (
@@ -299,7 +318,6 @@ function App() {
               </button>
             </div>
             
-            {/* Cuadrícula moderna de supermercados */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <button onClick={() => setActiveSupermarket('aldi')} style={{ WebkitAppearance: 'none', padding: '30px 10px', fontSize: '20px', background: 'linear-gradient(135deg, #005b9f 0%, #003f75 100%)', color: 'white', border: 'none', borderRadius: '24px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', boxShadow: '0 10px 20px rgba(0,91,159,0.25)', transition: 'transform 0.1s' }}>
                 <span style={{ fontSize: '34px', background: 'rgba(255,255,255,0.15)', padding: '16px', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛍️</span>
@@ -328,7 +346,6 @@ function App() {
         {activeSupermarket && (
           <div>
             
-            {/* Cabecera de la lista */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
               <button onClick={() => setActiveSupermarket(null)} style={{ WebkitAppearance: 'none', padding: '10px 14px', fontSize: '16px', cursor: 'pointer', borderRadius: '14px', border: 'none', backgroundColor: '#f0f2f5', color: '#444', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 ⬅️ <span style={{ display: 'none', '@media (min-width: 400px)': { display: 'inline' } } as any}>Atrás</span>
@@ -338,7 +355,6 @@ function App() {
               </h1>
             </div>
             
-            {/* Formulario para añadir (Tarjeta Blanca) */}
             <form onSubmit={handleAddItem} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '35px', backgroundColor: 'white', padding: '20px', borderRadius: '24px', boxShadow: '0 8px 25px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
                 <input 
@@ -357,7 +373,6 @@ function App() {
                 </button>
               </div>
               <select value={newItemCategory} onChange={(e) => setNewItemCategory(e.target.value)} style={{ padding: '16px', fontSize: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', WebkitAppearance: 'none', color: '#444', width: '100%', outline: 'none', fontWeight: '500' }}>
-                {/* CAMBIA ESTA LÍNEA */}
                 {categoriasAUsar.map(cat => <option key={cat} value={cat}>{cat}</option>)}
               </select>
               <button type="submit" style={{ WebkitAppearance: 'none', padding: '16px', fontSize: '16px', cursor: 'pointer', background: 'linear-gradient(135deg, #28a745 0%, #208838 100%)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 'bold', width: '100%', boxShadow: '0 6px 15px rgba(40,167,69,0.25)' }}>
@@ -365,7 +380,6 @@ function App() {
               </button>
             </form>
 
-            {/* Listado de Productos por Categoría (Estilo Tarjetas) */}
             {categoriasAUsar.map(categoria => {
               const itemsDeEstaCategoria = filteredItems.filter(item => !item.comprado && item.categoria === categoria);
               if (itemsDeEstaCategoria.length === 0) return null; 
@@ -380,7 +394,6 @@ function App() {
                       <div key={item.id} onClick={() => toggleItem(item)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', backgroundColor: 'white', borderRadius: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', cursor: 'pointer' }}>
                         
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1 }}>
-                          {/* El falso Checkbox */}
                           <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid #ddd', flexShrink: 0 }}></div>
                           <span style={{ fontSize: '18px', color: '#222', fontWeight: '500' }}>
                             {item.name} 
@@ -400,7 +413,6 @@ function App() {
               )
             })}
             
-            {/* Lista de Frecuentes (Comprados) */}
             <div style={{ marginTop: '40px' }}>
               <h4 style={{ margin: '0 0 12px 10px', color: '#999', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>
                 ❌ Frecuentes
@@ -409,7 +421,6 @@ function App() {
                 {filteredItems.filter(item => item.comprado).map(item => (
                   <div key={item.id} onClick={() => toggleItem(item)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: '20px', cursor: 'pointer' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1, opacity: 0.6 }}>
-                      {/* Icono aspa roja */}
                       <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#ff4d4f', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontSize: '12px', flexShrink: 0 }}>❌</div>
                       <span style={{ textDecoration: 'line-through', fontSize: '18px', color: '#666', fontWeight: '500' }}>
                         {item.name}
@@ -427,6 +438,7 @@ function App() {
 
         {/* --- BOTONES FLOTANTES --- */}
         <button onClick={() => setIsRecetarioOpen(true)} style={{ WebkitAppearance: 'none', position: 'fixed', bottom: '25px', left: '25px', width: '65px', height: '65px', borderRadius: '50%', background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)', color: 'white', border: 'none', fontSize: '28px', boxShadow: '0 8px 20px rgba(255,152,0,0.4)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 999 }} title="Abrir Recetario">📖</button>
+        <button onClick={() => setIsCalendarOpen(true)} style={{ WebkitAppearance: 'none', position: 'fixed', bottom: '25px', left: '50%', transform: 'translateX(-50%)', width: '75px', height: '75px', borderRadius: '50%', background: 'linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%)', color: 'white', border: 'none', fontSize: '32px', boxShadow: '0 8px 25px rgba(156,39,176,0.4)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 999 }} title="Organizar Menú">📅</button>
         <button onClick={() => setIsSuggestionOpen(true)} style={{ WebkitAppearance: 'none', position: 'fixed', bottom: '25px', right: '25px', width: '65px', height: '65px', borderRadius: '50%', background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)', color: 'white', border: 'none', fontSize: '28px', boxShadow: '0 8px 20px rgba(0,123,255,0.4)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>💡</button>
 
         {/* --- MODAL SUGERENCIAS --- */}
@@ -447,7 +459,6 @@ function App() {
         {isRecetarioOpen && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#f8f9fa', zIndex: 1100, display: 'flex', flexDirection: 'column' }}>
             
-            {/* CONTENEDOR SUPERIOR FIJO (No hace scroll y no se aplasta) */}
             <div style={{ padding: '20px 20px 0 20px', flexShrink: 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
                 <h2 style={{ margin: 0, fontSize: '24px', color: '#1a1a1a', fontWeight: '800' }}>📖 Recetario</h2>
@@ -486,7 +497,6 @@ function App() {
               </div>
             </div>
 
-            {/* CONTENEDOR DE LA LISTA (Este es el único que hace scroll) */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 40px 20px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 {recetasFiltradas.length === 0 ? (
@@ -499,20 +509,29 @@ function App() {
                       style={{ backgroundColor: 'white', borderRadius: '24px', padding: '20px', cursor: 'pointer', boxShadow: '0 6px 20px rgba(0,0,0,0.05)' }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ flex: 1, paddingRight: '15px' }}>
-                          <h3 style={{ margin: '0 0 8px 0', fontSize: '19px', color: '#1a1a1a', fontWeight: '800' }}>{receta.nombre}</h3>
+                        <div style={{ flex: 1, paddingRight: '10px' }}>
+                          <h3 style={{ margin: '0 0 8px 0', fontSize: '19px', color: '#1a1a1a', fontWeight: '800', lineHeight: '1.2' }}>{receta.nombre}</h3>
                           <span style={{ fontSize: '12px', backgroundColor: '#fff3e0', color: '#e65100', padding: '5px 10px', borderRadius: '8px', fontWeight: 'bold' }}>
                             {receta.categoria}
                           </span>
                         </div>
                         
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleAñadirReceta(receta); }}
-                          style={{ width: '45px', height: '45px', background: 'linear-gradient(135deg, #28a745 0%, #208838 100%)', color: 'white', border: 'none', borderRadius: '14px', fontSize: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 10px rgba(40,167,69,0.3)' }}
-                          title="Añadir a la lista"
-                        >
-                          +
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setRecetaParaCalendario(receta); }}
+                            style={{ width: '42px', height: '42px', background: 'linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%)', color: 'white', border: 'none', borderRadius: '14px', fontSize: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 10px rgba(156,39,176,0.3)' }}
+                            title="Añadir al Menú Semanal"
+                          >
+                            📅
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleAñadirReceta(receta); }}
+                            style={{ width: '42px', height: '42px', background: 'linear-gradient(135deg, #28a745 0%, #208838 100%)', color: 'white', border: 'none', borderRadius: '14px', fontSize: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 10px rgba(40,167,69,0.3)' }}
+                            title="Añadir al carrito"
+                          >
+                            +
+                          </button>
+                        </div>
                       </div>
                       
                       {recetaExpandida === receta.id && (
@@ -532,6 +551,96 @@ function App() {
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- PANTALLA DEL CALENDARIO (MENÚ SEMANAL) --- */}
+        {isCalendarOpen && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#f8f9fa', zIndex: 1100, display: 'flex', flexDirection: 'column' }}>
+            
+            <div style={{ padding: '20px 20px 0 20px', flexShrink: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+                <h2 style={{ margin: 0, fontSize: '24px', color: '#1a1a1a', fontWeight: '800' }}>📅 Menú Semanal</h2>
+                <button onClick={() => setIsCalendarOpen(false)} style={{ background: '#f0f2f5', border: 'none', fontSize: '18px', cursor: 'pointer', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>❌</button>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 40px 20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                {Object.keys(menuSemanal).map(dia => (
+                  <div key={dia} style={{ backgroundColor: 'white', borderRadius: '24px', padding: '20px', boxShadow: '0 6px 20px rgba(0,0,0,0.04)' }}>
+                    <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#6a1b9a', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px' }}>{dia}</h3>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '22px' }}>☀️</span>
+                        <input 
+                          type="text" 
+                          placeholder="¿Qué comemos?"
+                          value={menuSemanal[dia as keyof typeof menuSemanal].comida}
+                          onChange={(e) => handleMenuChange(dia, 'comida', e.target.value)}
+                          style={{ flex: 1, padding: '14px 16px', borderRadius: '14px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', fontSize: '16px', outline: 'none', color: '#333', fontWeight: '500' }}
+                        />
+                      </div>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '22px' }}>🌙</span>
+                        <input 
+                          type="text" 
+                          placeholder="¿Qué cenamos?"
+                          value={menuSemanal[dia as keyof typeof menuSemanal].cena}
+                          onChange={(e) => handleMenuChange(dia, 'cena', e.target.value)}
+                          style={{ flex: 1, padding: '14px 16px', borderRadius: '14px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', fontSize: '16px', outline: 'none', color: '#333', fontWeight: '500' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- MODAL AÑADIR AL CALENDARIO --- */}
+        {recetaParaCalendario && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200 }}>
+            <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '24px', width: '90%', maxWidth: '350px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+              <h3 style={{ margin: 0, textAlign: 'center', color: '#1a1a1a', fontSize: '20px', fontWeight: '800', lineHeight: '1.3' }}>
+                Asignar al menú:<br/><span style={{color: '#9c27b0'}}>"{recetaParaCalendario.nombre}"</span>
+              </h3>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#444', fontSize: '14px' }}>¿Qué día?</label>
+                  <select value={diaSeleccionado} onChange={(e) => setDiaSeleccionado(e.target.value)} style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '2px solid #eee', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa', color: '#333', fontWeight: '600' }}>
+                    {Object.keys(menuSemanal).map(dia => <option key={dia} value={dia}>{dia}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#444', fontSize: '14px' }}>¿Comida o Cena?</label>
+                  <select value={tipoComidaSeleccionado} onChange={(e) => setTipoComidaSeleccionado(e.target.value as 'comida'|'cena')} style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '2px solid #eee', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa', color: '#333', fontWeight: '600' }}>
+                    <option value="comida">☀️ Comida</option>
+                    <option value="cena">🌙 Cena</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
+                <button
+                  onClick={() => setRecetaParaCalendario(null)}
+                  style={{ flex: 1, WebkitAppearance: 'none', padding: '14px', borderRadius: '14px', border: 'none', cursor: 'pointer', backgroundColor: '#f0f2f5', color: '#444', fontWeight: 'bold', fontSize: '16px' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmarAñadirAlCalendario}
+                  style={{ flex: 1, WebkitAppearance: 'none', padding: '14px', borderRadius: '14px', border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%)', color: 'white', fontWeight: 'bold', fontSize: '16px', boxShadow: '0 4px 10px rgba(156,39,176,0.3)' }}
+                >
+                  Guardar
+                </button>
               </div>
             </div>
           </div>
