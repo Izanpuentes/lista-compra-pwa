@@ -103,37 +103,57 @@ function App() {
 
   const categorias = ['Todas', 'Legumbres', 'Carnes', 'Pescados', 'Pastas', 'Huevos', 'Sopas y Cremas', 'Verduras', 'Ensaladas', 'Arroces', 'Tapas', 'Postres'];
   
-  // --- ESTADOS DEL CALENDARIO (MENÚ SEMANAL DINÁMICO) ---
+  // --- ESTADOS DEL CALENDARIO (MENÚ SEMANAL DINÁMICO V2) ---
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [expandidoCalendario, setExpandidoCalendario] = useState<string | null>(null);
+  const [modoAsignacion, setModoAsignacion] = useState<{dia: string, tipo: 'comida'|'cena'} | null>(null);
   
-  // Guardamos un objeto vacío por defecto. La base de datos ahora usa fechas reales.
-  const [menuSemanal, setMenuSemanal] = useState<Record<string, {comida: string, cena: string}>>(() => {
-    const guardado = localStorage.getItem('menuSemanalApp');
+  const diasCalendario = obtenerProximos7Dias();
+
+  // Ahora guardamos objetos de Receta enteros, por lo que cambiamos el nombre en localStorage (AppV2)
+  const [menuSemanal, setMenuSemanal] = useState<Record<string, {comida: Receta | null, cena: Receta | null}>>(() => {
+    const guardado = localStorage.getItem('menuSemanalAppV2');
     return guardado ? JSON.parse(guardado) : {};
   });
 
-  const diasCalendario = obtenerProximos7Dias();
-
-  const handleMenuChange = (idFecha: string, tipo: 'comida' | 'cena', valor: string) => {
+  const handleEliminarRecetaCalendario = (dia: string, tipo: 'comida'|'cena') => {
     const nuevoMenu = {
       ...menuSemanal,
-      [idFecha]: { 
-        ...(menuSemanal[idFecha] || { comida: '', cena: '' }), 
-        [tipo]: valor 
-      }
+      [dia]: { ...(menuSemanal[dia] || { comida: null, cena: null }), [tipo]: null }
     };
     setMenuSemanal(nuevoMenu);
-    localStorage.setItem('menuSemanalApp', JSON.stringify(nuevoMenu));
+    localStorage.setItem('menuSemanalAppV2', JSON.stringify(nuevoMenu));
   };
 
-  // --- CONEXIÓN RECETARIO -> CALENDARIO ---
+  const handleAsignarRecetaDesdeCalendario = (receta: Receta) => {
+    if (!modoAsignacion) return;
+    const nuevoMenu = {
+      ...menuSemanal,
+      [modoAsignacion.dia]: { ...(menuSemanal[modoAsignacion.dia] || { comida: null, cena: null }), [modoAsignacion.tipo]: receta }
+    };
+    setMenuSemanal(nuevoMenu);
+    localStorage.setItem('menuSemanalAppV2', JSON.stringify(nuevoMenu));
+    
+    // Restauramos las pantallas
+    setModoAsignacion(null);
+    setIsRecetarioOpen(false);
+    setIsCalendarOpen(true);
+  };
+
+  // --- CONEXIÓN RECETARIO -> CALENDARIO (BOTÓN MANUAL) ---
   const [recetaParaCalendario, setRecetaParaCalendario] = useState<Receta | null>(null);
-  const [diaSeleccionado, setDiaSeleccionado] = useState(diasCalendario[0].id); // Por defecto: Hoy
+  const [diaSeleccionado, setDiaSeleccionado] = useState(diasCalendario[0].id);
   const [tipoComidaSeleccionado, setTipoComidaSeleccionado] = useState<'comida' | 'cena'>('comida');
 
   const confirmarAñadirAlCalendario = () => {
     if (!recetaParaCalendario) return;
-    handleMenuChange(diaSeleccionado, tipoComidaSeleccionado, recetaParaCalendario.nombre);
+    const nuevoMenu = {
+      ...menuSemanal,
+      [diaSeleccionado]: { ...(menuSemanal[diaSeleccionado] || { comida: null, cena: null }), [tipoComidaSeleccionado]: recetaParaCalendario }
+    };
+    setMenuSemanal(nuevoMenu);
+    localStorage.setItem('menuSemanalAppV2', JSON.stringify(nuevoMenu));
+
     const diaNom = diasCalendario.find(d => d.id === diaSeleccionado)?.nombre || diaSeleccionado;
     alert(`✅ "${recetaParaCalendario.nombre}" asignado al ${diaNom} para la ${tipoComidaSeleccionado}`);
     setRecetaParaCalendario(null);
@@ -522,6 +542,16 @@ function App() {
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 40px 20px' }}>
+              {modoAsignacion && (
+                <div style={{ backgroundColor: '#f3e5f5', padding: '15px', borderRadius: '16px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #ce93d8' }}>
+                  <span style={{ color: '#6a1b9a', fontWeight: 'bold', fontSize: '15px' }}>
+                    📍 Seleccionando {modoAsignacion.tipo} para el {diasCalendario.find(d => d.id === modoAsignacion.dia)?.nombre.split(' ')[0]}
+                  </span>
+                  <button onClick={() => { setModoAsignacion(null); setIsRecetarioOpen(false); setIsCalendarOpen(true); }} style={{ border: 'none', background: 'white', color: '#6a1b9a', cursor: 'pointer', fontWeight: 'bold', padding: '8px 12px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+                    Cancelar
+                  </button>
+                </div>
+              )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 {recetasFiltradas.length === 0 ? (
                   <p style={{ textAlign: 'center', color: '#888', marginTop: '20px' }}>No hay recetas en esta categoría.</p>
@@ -540,22 +570,31 @@ function App() {
                           </span>
                         </div>
                         
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        {modoAsignacion ? (
                           <button 
-                            onClick={(e) => { e.stopPropagation(); setRecetaParaCalendario(receta); }}
-                            style={{ width: '42px', height: '42px', background: 'linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%)', color: 'white', border: 'none', borderRadius: '14px', fontSize: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 10px rgba(156,39,176,0.3)' }}
-                            title="Añadir al Menú Semanal"
+                            onClick={(e) => { e.stopPropagation(); handleAsignarRecetaDesdeCalendario(receta); }}
+                            style={{ padding: '10px 16px', background: 'linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%)', color: 'white', border: 'none', borderRadius: '14px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(156,39,176,0.3)' }}
                           >
-                            📅
+                            ✅ Elegir
                           </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleAñadirReceta(receta); }}
-                            style={{ width: '42px', height: '42px', background: 'linear-gradient(135deg, #28a745 0%, #208838 100%)', color: 'white', border: 'none', borderRadius: '14px', fontSize: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 10px rgba(40,167,69,0.3)' }}
-                            title="Añadir al carrito"
-                          >
-                            +
-                          </button>
-                        </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setRecetaParaCalendario(receta); }}
+                              style={{ width: '42px', height: '42px', background: 'linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%)', color: 'white', border: 'none', borderRadius: '14px', fontSize: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 10px rgba(156,39,176,0.3)' }}
+                              title="Añadir al Menú Semanal"
+                            >
+                              📅
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleAñadirReceta(receta); }}
+                              style={{ width: '42px', height: '42px', background: 'linear-gradient(135deg, #28a745 0%, #208838 100%)', color: 'white', border: 'none', borderRadius: '14px', fontSize: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 10px rgba(40,167,69,0.3)' }}
+                              title="Añadir al carrito"
+                            >
+                              +
+                            </button>
+                          </div>
+                        )}
                       </div>
                       
                       {recetaExpandida === receta.id && (
@@ -591,10 +630,9 @@ function App() {
               </div>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 40px 20px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 {diasCalendario.map(diaObj => {
-                  const datosDia = menuSemanal[diaObj.id] || { comida: '', cena: '' };
+                  const datosDia = menuSemanal[diaObj.id] || { comida: null, cena: null };
                   
                   return (
                     <div key={diaObj.id} style={{ backgroundColor: 'white', borderRadius: '24px', padding: '20px', boxShadow: '0 6px 20px rgba(0,0,0,0.04)' }}>
@@ -603,34 +641,59 @@ function App() {
                       </h3>
                       
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <span style={{ fontSize: '22px' }}>☀️</span>
-                          <input 
-                            type="text" 
-                            placeholder="¿Qué comemos?"
-                            value={datosDia.comida}
-                            onChange={(e) => handleMenuChange(diaObj.id, 'comida', e.target.value)}
-                            style={{ flex: 1, padding: '14px 16px', borderRadius: '14px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', fontSize: '16px', outline: 'none', color: '#333', fontWeight: '500' }}
-                          />
+                        
+                        {/* --- COMIDA --- */}
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                          <span style={{ fontSize: '22px', marginTop: '10px' }}>☀️</span>
+                          {datosDia.comida ? (
+                            <div style={{ flex: 1, border: '2px solid #f0f2f5', borderRadius: '14px', backgroundColor: 'white', overflow: 'hidden' }}>
+                              <div onClick={() => setExpandidoCalendario(expandidoCalendario === `${diaObj.id}-comida` ? null : `${diaObj.id}-comida`)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', cursor: 'pointer', backgroundColor: expandidoCalendario === `${diaObj.id}-comida` ? '#f8f9fa' : 'white' }}>
+                                <span style={{ fontSize: '16px', color: '#333', fontWeight: 'bold' }}>{datosDia.comida.nombre}</span>
+                                <button onClick={(e) => { e.stopPropagation(); handleEliminarRecetaCalendario(diaObj.id, 'comida'); }} style={{ background: '#fff0f0', color: '#ff4d4f', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer' }}>🗑️</button>
+                              </div>
+                              {expandidoCalendario === `${diaObj.id}-comida` && (
+                                <div style={{ padding: '16px', borderTop: '2px solid #f0f2f5', backgroundColor: '#fafafa' }}>
+                                  <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#444' }}>🛒 Ingredientes:</h4>
+                                  <ul style={{ margin: '0 0 15px 0', paddingLeft: '20px', color: '#555', fontSize: '14px' }}>{datosDia.comida.ingredientes.map((ing, i) => <li key={i}>{ing.nombre}</li>)}</ul>
+                                  <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#444' }}>👨‍🍳 Preparación:</h4>
+                                  <p style={{ margin: 0, fontSize: '14px', color: '#555', whiteSpace: 'pre-line', lineHeight: '1.5' }}>{datosDia.comida.instrucciones || 'Sin instrucciones.'}</p>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <button onClick={() => { setModoAsignacion({ dia: diaObj.id, tipo: 'comida' }); setIsCalendarOpen(false); setIsRecetarioOpen(true); }} style={{ flex: 1, padding: '14px 16px', borderRadius: '14px', border: '2px dashed #d1c4e9', backgroundColor: '#fdfbfb', fontSize: '16px', color: '#6a1b9a', fontWeight: 'bold', cursor: 'pointer', textAlign: 'left' }}>➕ Seleccionar comida</button>
+                          )}
                         </div>
                         
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <span style={{ fontSize: '22px' }}>🌙</span>
-                          <input 
-                            type="text" 
-                            placeholder="¿Qué cenamos?"
-                            value={datosDia.cena}
-                            onChange={(e) => handleMenuChange(diaObj.id, 'cena', e.target.value)}
-                            style={{ flex: 1, padding: '14px 16px', borderRadius: '14px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', fontSize: '16px', outline: 'none', color: '#333', fontWeight: '500' }}
-                          />
+                        {/* --- CENA --- */}
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                          <span style={{ fontSize: '22px', marginTop: '10px' }}>🌙</span>
+                          {datosDia.cena ? (
+                            <div style={{ flex: 1, border: '2px solid #f0f2f5', borderRadius: '14px', backgroundColor: 'white', overflow: 'hidden' }}>
+                              <div onClick={() => setExpandidoCalendario(expandidoCalendario === `${diaObj.id}-cena` ? null : `${diaObj.id}-cena`)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', cursor: 'pointer', backgroundColor: expandidoCalendario === `${diaObj.id}-cena` ? '#f8f9fa' : 'white' }}>
+                                <span style={{ fontSize: '16px', color: '#333', fontWeight: 'bold' }}>{datosDia.cena.nombre}</span>
+                                <button onClick={(e) => { e.stopPropagation(); handleEliminarRecetaCalendario(diaObj.id, 'cena'); }} style={{ background: '#fff0f0', color: '#ff4d4f', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer' }}>🗑️</button>
+                              </div>
+                              {expandidoCalendario === `${diaObj.id}-cena` && (
+                                <div style={{ padding: '16px', borderTop: '2px solid #f0f2f5', backgroundColor: '#fafafa' }}>
+                                  <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#444' }}>🛒 Ingredientes:</h4>
+                                  <ul style={{ margin: '0 0 15px 0', paddingLeft: '20px', color: '#555', fontSize: '14px' }}>{datosDia.cena.ingredientes.map((ing, i) => <li key={i}>{ing.nombre}</li>)}</ul>
+                                  <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#444' }}>👨‍🍳 Preparación:</h4>
+                                  <p style={{ margin: 0, fontSize: '14px', color: '#555', whiteSpace: 'pre-line', lineHeight: '1.5' }}>{datosDia.cena.instrucciones || 'Sin instrucciones.'}</p>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <button onClick={() => { setModoAsignacion({ dia: diaObj.id, tipo: 'cena' }); setIsCalendarOpen(false); setIsRecetarioOpen(true); }} style={{ flex: 1, padding: '14px 16px', borderRadius: '14px', border: '2px dashed #d1c4e9', backgroundColor: '#fdfbfb', fontSize: '16px', color: '#6a1b9a', fontWeight: 'bold', cursor: 'pointer', textAlign: 'left' }}>➕ Seleccionar cena</button>
+                          )}
                         </div>
+
                       </div>
                     </div>
                   );
                 })}
               </div>
             </div>
-          </div>
         )}
 
         {/* --- MODAL AÑADIR AL CALENDARIO --- */}
