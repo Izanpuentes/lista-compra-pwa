@@ -51,6 +51,30 @@ const ORDEN_MERCADONA = [
   'Otros'                      // Salsas, caldos, huevos, etc.
 ];
 
+// --- GENERADOR DEL CALENDARIO DINÁMICO ---
+const obtenerProximos7Dias = () => {
+  const dias = [];
+  for (let i = 0; i < 7; i++) {
+    const fecha = new Date();
+    fecha.setDate(fecha.getDate() + i);
+    
+    // Clave interna única (ej: "2024-10-25")
+    const idFormato = fecha.toISOString().split('T')[0]; 
+    
+    // Nombre visual (ej: "viernes, 25")
+    let nombreFormato = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric' }).format(fecha);
+    // Capitalizamos la primera letra (ej: "Viernes, 25")
+    nombreFormato = nombreFormato.charAt(0).toUpperCase() + nombreFormato.slice(1);
+    
+    // Le añadimos la etiqueta amigable
+    if (i === 0) nombreFormato += ' (Hoy)';
+    if (i === 1) nombreFormato += ' (Mañana)';
+
+    dias.push({ id: idFormato, nombre: nombreFormato });
+  }
+  return dias;
+};
+
 function App() {
   const [currentUser, setCurrentUser] = useState<string | null>(localStorage.getItem('listaCompraUser'))
   const [houseId] = useState('a513962b-c0c9-446f-bf70-2684f545b4dd')
@@ -79,25 +103,24 @@ function App() {
 
   const categorias = ['Todas', 'Legumbres', 'Carnes', 'Pescados', 'Pastas', 'Huevos', 'Sopas y Cremas', 'Verduras', 'Ensaladas', 'Arroces', 'Tapas', 'Postres'];
   
-  // --- ESTADOS DEL CALENDARIO (MENÚ SEMANAL) ---
+  // --- ESTADOS DEL CALENDARIO (MENÚ SEMANAL DINÁMICO) ---
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [menuSemanal, setMenuSemanal] = useState(() => {
+  
+  // Guardamos un objeto vacío por defecto. La base de datos ahora usa fechas reales.
+  const [menuSemanal, setMenuSemanal] = useState<Record<string, {comida: string, cena: string}>>(() => {
     const guardado = localStorage.getItem('menuSemanalApp');
-    return guardado ? JSON.parse(guardado) : {
-      Lunes: { comida: '', cena: '' },
-      Martes: { comida: '', cena: '' },
-      Miércoles: { comida: '', cena: '' },
-      Jueves: { comida: '', cena: '' },
-      Viernes: { comida: '', cena: '' },
-      Sábado: { comida: '', cena: '' },
-      Domingo: { comida: '', cena: '' },
-    };
+    return guardado ? JSON.parse(guardado) : {};
   });
 
-  const handleMenuChange = (dia: string, tipo: 'comida' | 'cena', valor: string) => {
+  const diasCalendario = obtenerProximos7Dias();
+
+  const handleMenuChange = (idFecha: string, tipo: 'comida' | 'cena', valor: string) => {
     const nuevoMenu = {
       ...menuSemanal,
-      [dia]: { ...menuSemanal[dia as keyof typeof menuSemanal], [tipo]: valor }
+      [idFecha]: { 
+        ...(menuSemanal[idFecha] || { comida: '', cena: '' }), 
+        [tipo]: valor 
+      }
     };
     setMenuSemanal(nuevoMenu);
     localStorage.setItem('menuSemanalApp', JSON.stringify(nuevoMenu));
@@ -105,13 +128,14 @@ function App() {
 
   // --- CONEXIÓN RECETARIO -> CALENDARIO ---
   const [recetaParaCalendario, setRecetaParaCalendario] = useState<Receta | null>(null);
-  const [diaSeleccionado, setDiaSeleccionado] = useState('Lunes');
+  const [diaSeleccionado, setDiaSeleccionado] = useState(diasCalendario[0].id); // Por defecto: Hoy
   const [tipoComidaSeleccionado, setTipoComidaSeleccionado] = useState<'comida' | 'cena'>('comida');
 
   const confirmarAñadirAlCalendario = () => {
     if (!recetaParaCalendario) return;
     handleMenuChange(diaSeleccionado, tipoComidaSeleccionado, recetaParaCalendario.nombre);
-    alert(`✅ "${recetaParaCalendario.nombre}" asignado al ${diaSeleccionado} para la ${tipoComidaSeleccionado}`);
+    const diaNom = diasCalendario.find(d => d.id === diaSeleccionado)?.nombre || diaSeleccionado;
+    alert(`✅ "${recetaParaCalendario.nombre}" asignado al ${diaNom} para la ${tipoComidaSeleccionado}`);
     setRecetaParaCalendario(null);
   };
 
@@ -569,35 +593,41 @@ function App() {
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 40px 20px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                {Object.keys(menuSemanal).map(dia => (
-                  <div key={dia} style={{ backgroundColor: 'white', borderRadius: '24px', padding: '20px', boxShadow: '0 6px 20px rgba(0,0,0,0.04)' }}>
-                    <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#6a1b9a', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px' }}>{dia}</h3>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span style={{ fontSize: '22px' }}>☀️</span>
-                        <input 
-                          type="text" 
-                          placeholder="¿Qué comemos?"
-                          value={menuSemanal[dia as keyof typeof menuSemanal].comida}
-                          onChange={(e) => handleMenuChange(dia, 'comida', e.target.value)}
-                          style={{ flex: 1, padding: '14px 16px', borderRadius: '14px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', fontSize: '16px', outline: 'none', color: '#333', fontWeight: '500' }}
-                        />
-                      </div>
+                {diasCalendario.map(diaObj => {
+                  const datosDia = menuSemanal[diaObj.id] || { comida: '', cena: '' };
+                  
+                  return (
+                    <div key={diaObj.id} style={{ backgroundColor: 'white', borderRadius: '24px', padding: '20px', boxShadow: '0 6px 20px rgba(0,0,0,0.04)' }}>
+                      <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#6a1b9a', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                        {diaObj.nombre}
+                      </h3>
                       
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span style={{ fontSize: '22px' }}>🌙</span>
-                        <input 
-                          type="text" 
-                          placeholder="¿Qué cenamos?"
-                          value={menuSemanal[dia as keyof typeof menuSemanal].cena}
-                          onChange={(e) => handleMenuChange(dia, 'cena', e.target.value)}
-                          style={{ flex: 1, padding: '14px 16px', borderRadius: '14px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', fontSize: '16px', outline: 'none', color: '#333', fontWeight: '500' }}
-                        />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '22px' }}>☀️</span>
+                          <input 
+                            type="text" 
+                            placeholder="¿Qué comemos?"
+                            value={datosDia.comida}
+                            onChange={(e) => handleMenuChange(diaObj.id, 'comida', e.target.value)}
+                            style={{ flex: 1, padding: '14px 16px', borderRadius: '14px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', fontSize: '16px', outline: 'none', color: '#333', fontWeight: '500' }}
+                          />
+                        </div>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '22px' }}>🌙</span>
+                          <input 
+                            type="text" 
+                            placeholder="¿Qué cenamos?"
+                            value={datosDia.cena}
+                            onChange={(e) => handleMenuChange(diaObj.id, 'cena', e.target.value)}
+                            style={{ flex: 1, padding: '14px 16px', borderRadius: '14px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', fontSize: '16px', outline: 'none', color: '#333', fontWeight: '500' }}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -615,7 +645,7 @@ function App() {
                 <div>
                   <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#444', fontSize: '14px' }}>¿Qué día?</label>
                   <select value={diaSeleccionado} onChange={(e) => setDiaSeleccionado(e.target.value)} style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '2px solid #eee', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa', color: '#333', fontWeight: '600' }}>
-                    {Object.keys(menuSemanal).map(dia => <option key={dia} value={dia}>{dia}</option>)}
+                    {diasCalendario.map(diaObj => <option key={diaObj.id} value={diaObj.id}>{diaObj.nombre}</option>)}
                   </select>
                 </div>
 
