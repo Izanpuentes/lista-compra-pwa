@@ -648,9 +648,15 @@ function App() {
                           {datosDia.comida ? (
                             <div style={{ flex: 1, border: '2px solid #f0f2f5', borderRadius: '14px', backgroundColor: 'white', overflow: 'hidden' }}>
                               <div onClick={() => setExpandidoCalendario(expandidoCalendario === `${diaObj.id}-comida` ? null : `${diaObj.id}-comida`)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', cursor: 'pointer', backgroundColor: expandidoCalendario === `${diaObj.id}-comida` ? '#f8f9fa' : 'white' }}>
-                                <span style={{ fontSize: '16px', color: '#333', fontWeight: 'bold' }}>{datosDia.comida.nombre}</span>
-                                <button onClick={(e) => { e.stopPropagation(); handleEliminarRecetaCalendario(diaObj.id, 'comida'); }} style={{ background: '#fff0f0', color: '#ff4d4f', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer' }}>🗑️</button>
+                                <span style={{ fontSize: '16px', color: '#333', fontWeight: 'bold', flex: 1, paddingRight: '10px' }}>{datosDia.comida.nombre}</span>
+                                
+                                {/* BOTONES COMIDA (Añadir a lista y Eliminar) */}
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <button onClick={(e) => { e.stopPropagation(); handleAñadirReceta(datosDia.comida!); setIsCalendarOpen(false); }} style={{ background: '#e6faec', color: '#28a745', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Añadir ingredientes al carrito">➕</button>
+                                  <button onClick={(e) => { e.stopPropagation(); handleEliminarRecetaCalendario(diaObj.id, 'comida'); }} style={{ background: '#fff0f0', color: '#ff4d4f', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Quitar del menú">🗑️</button>
+                                </div>
                               </div>
+                              
                               {expandidoCalendario === `${diaObj.id}-comida` && (
                                 <div style={{ padding: '16px', borderTop: '2px solid #f0f2f5', backgroundColor: '#fafafa' }}>
                                   <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#444' }}>🛒 Ingredientes:</h4>
@@ -671,9 +677,15 @@ function App() {
                           {datosDia.cena ? (
                             <div style={{ flex: 1, border: '2px solid #f0f2f5', borderRadius: '14px', backgroundColor: 'white', overflow: 'hidden' }}>
                               <div onClick={() => setExpandidoCalendario(expandidoCalendario === `${diaObj.id}-cena` ? null : `${diaObj.id}-cena`)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', cursor: 'pointer', backgroundColor: expandidoCalendario === `${diaObj.id}-cena` ? '#f8f9fa' : 'white' }}>
-                                <span style={{ fontSize: '16px', color: '#333', fontWeight: 'bold' }}>{datosDia.cena.nombre}</span>
-                                <button onClick={(e) => { e.stopPropagation(); handleEliminarRecetaCalendario(diaObj.id, 'cena'); }} style={{ background: '#fff0f0', color: '#ff4d4f', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer' }}>🗑️</button>
+                                <span style={{ fontSize: '16px', color: '#333', fontWeight: 'bold', flex: 1, paddingRight: '10px' }}>{datosDia.cena.nombre}</span>
+                                
+                                {/* BOTONES CENA (Añadir a lista y Eliminar) */}
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <button onClick={(e) => { e.stopPropagation(); handleAñadirReceta(datosDia.cena!); setIsCalendarOpen(false); }} style={{ background: '#e6faec', color: '#28a745', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Añadir ingredientes al carrito">➕</button>
+                                  <button onClick={(e) => { e.stopPropagation(); handleEliminarRecetaCalendario(diaObj.id, 'cena'); }} style={{ background: '#fff0f0', color: '#ff4d4f', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Quitar del menú">🗑️</button>
+                                </div>
                               </div>
+                              
                               {expandidoCalendario === `${diaObj.id}-cena` && (
                                 <div style={{ padding: '16px', borderTop: '2px solid #f0f2f5', backgroundColor: '#fafafa' }}>
                                   <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#444' }}>🛒 Ingredientes:</h4>
