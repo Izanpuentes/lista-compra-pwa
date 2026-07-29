@@ -200,12 +200,6 @@ function App() {
       }
     });
 
-    socket.on('suggestionSent', () => {
-      alert("¡Sugerencia enviada correctamente!")
-      setIsSuggestionOpen(false)
-      setSuggestionText('')
-    })
-
     return () => {
       socket.off('itemAdded')
       socket.off('item-toggled') 
@@ -262,15 +256,33 @@ function App() {
 
   const procesarAñadirReceta = (receta: Receta, supermercadoDestino: string) => {
     receta.ingredientes.forEach(ingrediente => {
-      const categoriaDetectada = categorizarProducto(ingrediente.nombre);
-      const nuevoItemData = {
-        name: ingrediente.nombre,
-        houseId: houseId,
-        supermercado: supermercadoDestino,
-        categoria: categoriaDetectada,
-        creador: currentUser
-      };
-      emitirOSincronizar('addItem', nuevoItemData);
+      // Normalizamos el nombre (minúsculas y sin espacios extra) para comparar bien
+      const nombreNormalizado = ingrediente.nombre.trim().toLowerCase();
+      
+      // Comprobamos si el ingrediente ya existe en ESE supermercado
+      const itemExistente = items.find(
+        item => item.supermercado === supermercadoDestino && 
+                item.name.trim().toLowerCase() === nombreNormalizado
+      );
+
+      if (itemExistente) {
+        // Si existe y ya estaba comprado (frecuentes), lo desmarcamos para que vuelva a la lista
+        if (itemExistente.comprado) {
+          socket.emit('toggle-item', { itemId: itemExistente.id, houseId, comprado: false });
+        }
+        // Si no está comprado (ya está en la lista activa), NO HACEMOS NADA.
+      } else {
+        // Si no existe en absoluto, lo añadimos como un producto totalmente nuevo
+        const categoriaDetectada = categorizarProducto(ingrediente.nombre);
+        const nuevoItemData = {
+          name: ingrediente.nombre,
+          houseId: houseId,
+          supermercado: supermercadoDestino,
+          categoria: categoriaDetectada,
+          creador: currentUser
+        };
+        emitirOSincronizar('addItem', nuevoItemData);
+      }
     });
 
     alert(`✅ ¡Ingredientes de "${receta.nombre}" añadidos a ${supermercadoDestino}!`);
@@ -309,7 +321,14 @@ function App() {
   };
   const handleSendSuggestion = () => {
     if (!suggestionText.trim()) return;
-    socket.emit('sendSuggestion', { text: suggestionText, houseId });
+    
+    // Lo enviamos al servidor
+    socket.emit('sendSuggestion', { text: suggestionText, houseId, creador: currentUser });
+    
+    // Limpiamos y cerramos al instante sin esperar respuesta del servidor
+    alert("¡Sugerencia enviada correctamente!");
+    setIsSuggestionOpen(false);
+    setSuggestionText('');
   }
 
   const getBackgroundColor = () => {
