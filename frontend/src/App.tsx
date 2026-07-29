@@ -297,12 +297,41 @@ function App() {
   };
 
   const handleAddItem = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newItemName.trim() || !activeSupermarket || !currentUser) return
+    e.preventDefault();
+    if (!newItemName.trim() || !activeSupermarket || !currentUser) return;
 
-    socket.emit('addItem', { name: newItemName, houseId, supermercado: activeSupermarket, categoria: newItemCategory, creador: currentUser })
-    setNewItemName(''); setNewItemCategory('Otros');
-  }
+    // 1. Normalizamos el texto (minúsculas y sin espacios a los lados) para que "Manzana" y " manzana " sean lo mismo
+    const nombreNormalizado = newItemName.trim().toLowerCase();
+    
+    // 2. Buscamos si ya existe ese producto exacto en ESE supermercado
+    const itemExistente = items.find(
+      item => item.supermercado === activeSupermarket && 
+              item.name.trim().toLowerCase() === nombreNormalizado
+    );
+
+    if (itemExistente) {
+      // 3A. Si existe y estaba tachado en Frecuentes, lo "destachamos" para que suba arriba
+      if (itemExistente.comprado) {
+        socket.emit('toggle-item', { itemId: itemExistente.id, houseId, comprado: false });
+      } else {
+        // 3B. Si existe y NO está tachado, significa que ya lo tienes por comprar. Avisamos y no hacemos nada.
+        alert(`¡"${newItemName}" ya está en tu lista de ${activeSupermarket}!`);
+      }
+    } else {
+      // 4. Si no existe en absoluto, lo creamos como un producto nuevo
+      socket.emit('addItem', { 
+        name: newItemName, 
+        houseId, 
+        supermercado: activeSupermarket, 
+        categoria: newItemCategory, 
+        creador: currentUser 
+      });
+    }
+
+    // Por último, vaciamos la barra de texto
+    setNewItemName(''); 
+    setNewItemCategory('Otros');
+  };
 
   const emitirOSincronizar = (evento: string, data: any) => {
     if (socket.connected) {
