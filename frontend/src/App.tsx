@@ -621,7 +621,7 @@ function App() {
 
         {/* --- PANTALLA DEL CALENDARIO (MENÚ SEMANAL) --- */}
         {isCalendarOpen && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#f8f9fa', zIndex: 1100, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#f8f9fa', zIndex: 1100, display: 'flex', flexDirection: 'column', height: '100%', maxHeight: '100vh' }}>
             
             <div style={{ padding: '20px 20px 0 20px', flexShrink: 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
@@ -630,7 +630,9 @@ function App() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            {/* CONTENEDOR DE SCROLL CORREGIDO */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 100px 20px', WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 {diasCalendario.map(diaObj => {
                   const datosDia = menuSemanal[diaObj.id] || { comida: null, cena: null };
                   
@@ -650,7 +652,6 @@ function App() {
                               <div onClick={() => setExpandidoCalendario(expandidoCalendario === `${diaObj.id}-comida` ? null : `${diaObj.id}-comida`)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', cursor: 'pointer', backgroundColor: expandidoCalendario === `${diaObj.id}-comida` ? '#f8f9fa' : 'white' }}>
                                 <span style={{ fontSize: '16px', color: '#333', fontWeight: 'bold', flex: 1, paddingRight: '10px' }}>{datosDia.comida.nombre}</span>
                                 
-                                {/* BOTONES COMIDA (Añadir a lista y Eliminar) */}
                                 <div style={{ display: 'flex', gap: '8px' }}>
                                   <button onClick={(e) => { e.stopPropagation(); handleAñadirReceta(datosDia.comida!); setIsCalendarOpen(false); }} style={{ background: '#e6faec', color: '#28a745', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Añadir ingredientes al carrito">➕</button>
                                   <button onClick={(e) => { e.stopPropagation(); handleEliminarRecetaCalendario(diaObj.id, 'comida'); }} style={{ background: '#fff0f0', color: '#ff4d4f', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Quitar del menú">🗑️</button>
@@ -679,7 +680,6 @@ function App() {
                               <div onClick={() => setExpandidoCalendario(expandidoCalendario === `${diaObj.id}-cena` ? null : `${diaObj.id}-cena`)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', cursor: 'pointer', backgroundColor: expandidoCalendario === `${diaObj.id}-cena` ? '#f8f9fa' : 'white' }}>
                                 <span style={{ fontSize: '16px', color: '#333', fontWeight: 'bold', flex: 1, paddingRight: '10px' }}>{datosDia.cena.nombre}</span>
                                 
-                                {/* BOTONES CENA (Añadir a lista y Eliminar) */}
                                 <div style={{ display: 'flex', gap: '8px' }}>
                                   <button onClick={(e) => { e.stopPropagation(); handleAñadirReceta(datosDia.cena!); setIsCalendarOpen(false); }} style={{ background: '#e6faec', color: '#28a745', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Añadir ingredientes al carrito">➕</button>
                                   <button onClick={(e) => { e.stopPropagation(); handleEliminarRecetaCalendario(diaObj.id, 'cena'); }} style={{ background: '#fff0f0', color: '#ff4d4f', border: 'none', borderRadius: '10px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Quitar del menú">🗑️</button>
@@ -706,6 +706,7 @@ function App() {
                 })}
               </div>
             </div>
+          </div>
         )}
 
         {/* --- MODAL AÑADIR AL CALENDARIO --- */}
