@@ -34,6 +34,25 @@ const RUTAS_SUPERMERCADO = [
   'Enlatados', 'Chocolates y frutos secos', 'Higiene', 'Helados', 'Otros'
 ];
 
+// AÑADE ESTO JUSTO DEBAJO:
+const ORDEN_MERCADONA = [
+  'Verduras y frutas',         // Frutas y verduras
+  'Precocinados',              // Comida lista para llevar
+  'Enlatados',                 // Enlatados
+  'Pescados',                  // Pescados
+  'Carnes',                    // (La pongo junto al pescado para no dejarla suelta)
+  'Helados',                   // Helados / Congelados
+  'Fritos/Bolsas',             // Bolsas de fritos
+  'Lácteos y embutidos',       // Embutidos y jamón
+  'Leche',                     // Lácteos
+  'Alcohol',                   // Bebidas gaseosas y alcohol
+  'Desayuno',                  // Desayuno
+  'Pan',                       // Pan
+  'Chocolates y frutos secos', // Extras
+  'Higiene',                   // Higiene
+  'Otros'                      // Salsas, caldos, huevos, etc.
+];
+
 function App() {
   const [currentUser, setCurrentUser] = useState<string | null>(localStorage.getItem('listaCompraUser'))
   const [houseId] = useState('a513962b-c0c9-446f-bf70-2684f545b4dd')
@@ -258,6 +277,8 @@ function App() {
 
   const filteredItems = items.filter(item => item.supermercado === activeSupermarket);
 
+  const categoriasAUsar = activeSupermarket === 'mercadona' ? ORDEN_MERCADONA : RUTAS_SUPERMERCADO;
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: getBackgroundColor(), transition: 'background-color 0.4s ease', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ maxWidth: '500px', margin: '0 auto', padding: '1.5rem', paddingBottom: '100px' }}>
@@ -336,7 +357,8 @@ function App() {
                 </button>
               </div>
               <select value={newItemCategory} onChange={(e) => setNewItemCategory(e.target.value)} style={{ padding: '16px', fontSize: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', WebkitAppearance: 'none', color: '#444', width: '100%', outline: 'none', fontWeight: '500' }}>
-                {RUTAS_SUPERMERCADO.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                {/* CAMBIA ESTA LÍNEA */}
+                {categoriasAUsar.map(cat => <option key={cat} value={cat}>{cat}</option>)}
               </select>
               <button type="submit" style={{ WebkitAppearance: 'none', padding: '16px', fontSize: '16px', cursor: 'pointer', background: 'linear-gradient(135deg, #28a745 0%, #208838 100%)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 'bold', width: '100%', boxShadow: '0 6px 15px rgba(40,167,69,0.25)' }}>
                 ➕ Añadir al carrito
@@ -344,7 +366,7 @@ function App() {
             </form>
 
             {/* Listado de Productos por Categoría (Estilo Tarjetas) */}
-            {RUTAS_SUPERMERCADO.map(categoria => {
+            {categoriasAUsar.map(categoria => {
               const itemsDeEstaCategoria = filteredItems.filter(item => !item.comprado && item.categoria === categoria);
               if (itemsDeEstaCategoria.length === 0) return null; 
               
