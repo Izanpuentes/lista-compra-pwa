@@ -80,6 +80,8 @@ function App() {
   const [houseId] = useState('a513962b-c0c9-446f-bf70-2684f545b4dd')
   const [items, setItems] = useState<ShoppingItem[]>([])
   
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+
   const [newItemName, setNewItemName] = useState('')
   const [newItemCategory, setNewItemCategory] = useState('Otros')
   
@@ -110,10 +112,24 @@ function App() {
   
   const diasCalendario = obtenerProximos7Dias();
 
-  // Cambiamos a V3 y usamos listas (arrays) en lugar de un solo objeto
+  // --- FUNCIÓN TRADUCTORA DE DATOS ANTIGUOS ---
+  const normalizarMenu = (menuViejo: any) => {
+    const menuNuevo: any = {};
+    if (!menuViejo) return menuNuevo;
+    for (const dia in menuViejo) {
+      menuNuevo[dia] = {
+        // Si ya es una lista, lo deja igual. Si es el objeto antiguo, lo envuelve en una lista [ ]
+        comida: Array.isArray(menuViejo[dia]?.comida) ? menuViejo[dia].comida : (menuViejo[dia]?.comida ? [menuViejo[dia].comida] : []),
+        cena: Array.isArray(menuViejo[dia]?.cena) ? menuViejo[dia].cena : (menuViejo[dia]?.cena ? [menuViejo[dia].cena] : [])
+      };
+    }
+    return menuNuevo;
+  };
+
   const [menuSemanal, setMenuSemanal] = useState<Record<string, {comida: Receta[], cena: Receta[]}>>(() => {
-    const guardado = localStorage.getItem('menuSemanalAppV3');
-    return guardado ? JSON.parse(guardado) : {};
+    // Intentamos cargar la V3, si no existe rescatamos la V2 antigua y la transformamos
+    const guardado = localStorage.getItem('menuSemanalAppV3') || localStorage.getItem('menuSemanalAppV2');
+    return guardado ? normalizarMenu(JSON.parse(guardado)) : {};
   });
 
   const sincronizarMenu = (nuevoMenu: any) => {
@@ -216,11 +232,20 @@ function App() {
       }
     });
 
-    // Escuchar si alguien actualiza el menú
-    socket.on('menuUpdated', (nuevoMenu) => {
-      setMenuSemanal(nuevoMenu);
-      localStorage.setItem('menuSemanalAppV2', JSON.stringify(nuevoMenu));
+    // Escuchar si hay una actualización global
+    socket.on('appUpdated', () => {
+      setUpdateAvailable(true);
     });
+
+   // Escuchar si alguien actualiza el menú
+    socket.on('menuUpdated', (nuevoMenu) => {
+      // Pasamos los datos del servidor por el traductor para evitar bloqueos
+      const menuCorregido = normalizarMenu(nuevoMenu);
+      setMenuSemanal(menuCorregido);
+      localStorage.setItem('menuSemanalAppV3', JSON.stringify(menuCorregido));
+    });
+
+    socket.off('appUpdated')
 
     return () => {
       socket.off('itemAdded')
@@ -409,6 +434,19 @@ function App() {
       </div>
     )
   }
+
+  {/* --- CARTEL DE ACTUALIZACIÓN --- */}
+      {updateAvailable && (
+        <div style={{ position: 'sticky', top: 0, left: 0, right: 0, backgroundColor: '#ff9800', color: 'white', padding: '15px 20px', zIndex: 9999, display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 15px rgba(255,152,0,0.4)', animation: 'fadeIn 0.5s ease-in-out' }}>
+          <span style={{ fontWeight: 'bold', fontSize: '15px' }}>🚀 ¡Nueva versión disponible!</span>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{ padding: '8px 16px', borderRadius: '12px', border: 'none', backgroundColor: 'white', color: '#ff9800', fontWeight: '900', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}
+          >
+            Actualizar
+          </button>
+        </div>
+      )}
 
   const filteredItems = items.filter(item => item.supermercado === activeSupermarket);
   const categoriasAUsar = activeSupermarket === 'mercadona' ? ORDEN_MERCADONA : RUTAS_SUPERMERCADO;

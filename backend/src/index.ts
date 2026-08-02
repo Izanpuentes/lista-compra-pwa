@@ -67,6 +67,13 @@ app.get('/api/recetas', async (req, res) => {
   }
 });
 
+// --- RUTA PARA FORZAR ACTUALIZACIÓN EN LOS MÓVILES ---
+app.get('/api/trigger-update', (req, res) => {
+  // io.emit envía el mensaje a TODOS los usuarios conectados sin excepción
+  io.emit('appUpdated', { message: 'Nueva versión disponible' });
+  res.send('✅ Notificación de actualización enviada a todos los dispositivos conectados de la familia.');
+});
+
 const frontendPath = path.join(__dirname, '../../frontend/dist');
 app.use(express.static(frontendPath));
 
