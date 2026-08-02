@@ -6,7 +6,10 @@ import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import nodemailer from 'nodemailer'; // <-- NUEVA IMPORTACIÓN
+import { Resend } from 'resend';
+
+// Reemplazamos la configuración de nodemailer por la de Resend
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,15 +29,7 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
 // --- CONFIGURACIÓN DE NODEMAILER ---
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // Importante para forzar la conexión segura que exige Render
-  auth: {
-    user: process.env.EMAIL_USER, 
-    pass: process.env.EMAIL_PASS  
-  }
-});
+
 
 app.use(cors());
 app.use(express.json());
@@ -158,30 +153,7 @@ io.on('connection', (socket) => {
 
   // Cuando el backend escucha el evento de sugerencia...
 socket.on('sendSuggestion', async (data) => {
-  // CHIVATO 1: Comprobar si el evento llega al servidor
-  console.log("📩 ¡Sugerencia recibida en el servidor!", data);
-  
-  // CHIVATO 2: Comprobar si las variables de Render se están leyendo bien
-  // (Imprimimos solo si existen, por seguridad no imprimimos la contraseña entera)
-  console.log("Usuario:", process.env.EMAIL_USER);
-  console.log("¿Hay contraseña metida?:", !!process.env.EMAIL_PASS);
-
-  try {
-    // Aquí va tu código actual de nodemailer...
-    const info = await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: process.env.EMAIL_USER,
-      subject: `💡 Nueva sugerencia de ${data.creador}`,
-      text: data.text
-    });
-
-    // CHIVATO 3: Si todo sale bien
-    console.log("✅ Correo enviado con éxito. ID:", info.messageId);
-
-  } catch (error) {
-    // CHIVATO 4: Si nodemailer falla, esto capturará el error exacto y te lo mostrará en Render
-    console.error("❌ ERROR CRÍTICO al enviar el correo:", error);
-  }
+  console.log("📩 ¡Sugerencia recibida en el servidor por RESEND!", data);
 });
 
   socket.on('disconnect', () => {
