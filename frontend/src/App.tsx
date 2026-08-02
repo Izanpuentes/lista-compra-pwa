@@ -112,13 +112,15 @@ function App() {
   
   const diasCalendario = obtenerProximos7Dias();
 
-  // --- FUNCIÓN TRADUCTORA DE DATOS ANTIGUOS ---
+  // =====================================================================
+  // 1. PRIMERO CREAMOS LA MEMORIA DEL MENÚ SEMANAL
+  // =====================================================================
+
   const normalizarMenu = (menuViejo: any) => {
     const menuNuevo: any = {};
     if (!menuViejo) return menuNuevo;
     for (const dia in menuViejo) {
       menuNuevo[dia] = {
-        // Si ya es una lista, lo deja igual. Si es el objeto antiguo, lo envuelve en una lista [ ]
         comida: Array.isArray(menuViejo[dia]?.comida) ? menuViejo[dia].comida : (menuViejo[dia]?.comida ? [menuViejo[dia].comida] : []),
         cena: Array.isArray(menuViejo[dia]?.cena) ? menuViejo[dia].cena : (menuViejo[dia]?.cena ? [menuViejo[dia].cena] : [])
       };
@@ -127,7 +129,6 @@ function App() {
   };
 
   const [menuSemanal, setMenuSemanal] = useState<Record<string, {comida: Receta[], cena: Receta[]}>>(() => {
-    // Intentamos cargar la V3, si no existe rescatamos la V2 antigua y la transformamos
     const guardado = localStorage.getItem('menuSemanalAppV3') || localStorage.getItem('menuSemanalAppV2');
     return guardado ? normalizarMenu(JSON.parse(guardado)) : {};
   });
@@ -137,6 +138,71 @@ function App() {
     localStorage.setItem('menuSemanalAppV3', JSON.stringify(nuevoMenu));
     socket.emit('updateMenu', { houseId, menu: nuevoMenu }); 
   };
+
+
+  // =====================================================================
+  // 2. AHORA SÍ PODEMOS LEER EL MENÚ PARA CREAR EL HISTORIAL
+  // =====================================================================
+
+  const [isHistorialOpen, setIsHistorialOpen] = useState(false);
+  const [semanaExpandidaHistorial, setSemanaExpandidaHistorial] = useState<string | null>(null);
+
+  const semanasHistorial = (() => {
+    const semanas: Record<string, { lunes: string, etiqueta: string, dias: Record<number, {comida: Receta[], cena: Receta[]}> }> = {};
+
+    Object.entries(menuSemanal).forEach(([fechaStr, datos]) => {
+      if ((!datos.comida || datos.comida.length === 0) && (!datos.cena || datos.cena.length === 0)) return;
+
+      const [y, m, d] = fechaStr.split('-').map(Number);
+      if (!y || !m || !d) return;
+
+      const dateObj = new Date(y, m - 1, d);
+      const dayOfWeek = dateObj.getDay();
+
+      const diff = dateObj.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      const monday = new Date(y, m - 1, diff);
+      
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const mondayStr = `${monday.getFullYear()}-${pad(monday.getMonth() + 1)}-${pad(monday.getDate())}`;
+
+      if (!semanas[mondayStr]) {
+        const opciones: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' };
+        semanas[mondayStr] = {
+          lunes: mondayStr,
+          etiqueta: `Semana del ${monday.toLocaleDateString('es-ES', opciones)}`,
+          dias: {}
+        };
+      }
+      semanas[mondayStr].dias[dayOfWeek] = datos;
+    });
+
+    return Object.values(semanas).sort((a, b) => b.lunes.localeCompare(a.lunes));
+  })();
+
+  const copiarHistorialAActual = (semanaHistorial: any) => {
+    if (!window.confirm(`¿Seguro que quieres copiar la ${semanaHistorial.etiqueta}? Esto reemplazará las comidas que ya tengas asignadas en los próximos 7 días.`)) return;
+
+    const nuevoMenu = { ...menuSemanal };
+    
+    diasCalendario.forEach(diaActual => {
+      const [y, m, d] = diaActual.id.split('-').map(Number);
+      const dateObj = new Date(y, m - 1, d);
+      const dayOfWeek = dateObj.getDay();
+
+      if (semanaHistorial.dias[dayOfWeek]) {
+        nuevoMenu[diaActual.id] = semanaHistorial.dias[dayOfWeek];
+      } else {
+        nuevoMenu[diaActual.id] = { comida: [], cena: [] }; 
+      }
+    });
+
+    sincronizarMenu(nuevoMenu);
+    alert("✅ ¡Menú de la semana copiado con éxito!");
+    setIsHistorialOpen(false);
+    setIsCalendarOpen(true);
+  };
+
+  // =====================================================================
 
   // Ahora necesitamos saber la ID de la receta que queremos borrar de la lista
   const handleEliminarRecetaCalendario = (dia: string, tipo: 'comida'|'cena', recetaId: string) => {
@@ -735,7 +801,11 @@ function App() {
             <div style={{ padding: '20px 20px 0 20px', flexShrink: 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
                 <h2 style={{ margin: 0, fontSize: '24px', color: '#1a1a1a', fontWeight: '800' }}>📅 Menú Semanal</h2>
-                <button onClick={() => setIsCalendarOpen(false)} style={{ background: '#f0f2f5', border: 'none', fontSize: '18px', cursor: 'pointer', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>❌</button>
+                
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => { setIsCalendarOpen(false); setIsHistorialOpen(true); }} style={{ background: '#f3e5f5', color: '#9c27b0', border: 'none', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', padding: '8px 12px', borderRadius: '14px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>⏳ Historial</button>
+                  <button onClick={() => setIsCalendarOpen(false)} style={{ background: '#f0f2f5', border: 'none', fontSize: '18px', cursor: 'pointer', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>❌</button>
+                </div>
               </div>
             </div>
 
@@ -816,6 +886,65 @@ function App() {
                   );
                 })}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- PANTALLA DEL HISTORIAL --- */}
+        {isHistorialOpen && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#f8f9fa', zIndex: 1150, display: 'flex', flexDirection: 'column', height: '100%', maxHeight: '100vh' }}>
+            <div style={{ padding: '20px 20px 0 20px', flexShrink: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+                <h2 style={{ margin: 0, fontSize: '24px', color: '#1a1a1a', fontWeight: '800' }}>⏳ Historial</h2>
+                <button onClick={() => { setIsHistorialOpen(false); setIsCalendarOpen(true); }} style={{ background: '#f0f2f5', border: 'none', fontSize: '18px', cursor: 'pointer', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>❌</button>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 40px 20px', WebkitOverflowScrolling: 'touch' }}>
+              {semanasHistorial.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#888', marginTop: '20px' }}>Aún no hay semanas en el historial.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  {semanasHistorial.map(semana => (
+                    <div key={semana.lunes} style={{ backgroundColor: 'white', borderRadius: '24px', padding: '20px', boxShadow: '0 6px 20px rgba(0,0,0,0.04)' }}>
+                      <div 
+                        onClick={() => setSemanaExpandidaHistorial(semanaExpandidaHistorial === semana.lunes ? null : semana.lunes)}
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                      >
+                        <h3 style={{ margin: 0, fontSize: '17px', color: '#6a1b9a', fontWeight: '800' }}>{semana.etiqueta}</h3>
+                        <span style={{ fontSize: '20px', transform: semanaExpandidaHistorial === semana.lunes ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>🔽</span>
+                      </div>
+
+                      {semanaExpandidaHistorial === semana.lunes && (
+                        <div style={{ marginTop: '20px', borderTop: '2px solid #f0f2f5', paddingTop: '20px', animation: 'fadeIn 0.3s ease' }}>
+                          <button 
+                            onClick={() => copiarHistorialAActual(semana)}
+                            style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%)', color: 'white', border: 'none', borderRadius: '16px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '20px', boxShadow: '0 4px 15px rgba(156,39,176,0.3)' }}
+                          >
+                            📥 Copiar a la semana actual
+                          </button>
+
+                          {[1, 2, 3, 4, 5, 6, 0].map(diaIdx => {
+                            const datosDia = semana.dias[diaIdx];
+                            if (!datosDia) return null;
+                            
+                            const nombresDias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                            return (
+                              <div key={diaIdx} style={{ marginBottom: '15px' }}>
+                                <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', color: '#333' }}>{nombresDias[diaIdx]}</h4>
+                                <div style={{ paddingLeft: '12px', borderLeft: '3px solid #e1bee7', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {datosDia.comida.length > 0 && <span style={{ fontSize: '14px', color: '#555' }}>☀️ {datosDia.comida.map(r => r.nombre).join(', ')}</span>}
+                                  {datosDia.cena.length > 0 && <span style={{ fontSize: '14px', color: '#555' }}>🌙 {datosDia.cena.map(r => r.nombre).join(', ')}</span>}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
