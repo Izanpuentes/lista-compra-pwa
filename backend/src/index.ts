@@ -154,26 +154,33 @@ io.on('connection', (socket) => {
     }
   });
 
-  // --- NUEVA LÓGICA DE SUGERENCIAS ---
-  socket.on('sendSuggestion', async (data) => {
-    try {
-      const { text, houseId } = data;
-      
-      const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: process.env.EMAIL_USER, // Te lo envías a ti mismo
-        subject: `💡 Nueva sugerencia para la lista de la compra`,
-        text: `Has recibido una nueva sugerencia desde la casa:\n\n"${text}"`
-      };
+  // Cuando el backend escucha el evento de sugerencia...
+socket.on('sendSuggestion', async (data) => {
+  // CHIVATO 1: Comprobar si el evento llega al servidor
+  console.log("📩 ¡Sugerencia recibida en el servidor!", data);
+  
+  // CHIVATO 2: Comprobar si las variables de Render se están leyendo bien
+  // (Imprimimos solo si existen, por seguridad no imprimimos la contraseña entera)
+  console.log("Usuario:", process.env.EMAIL_USER);
+  console.log("¿Hay contraseña metida?:", !!process.env.EMAIL_PASS);
 
-      await transporter.sendMail(mailOptions);
-      
-      // Avisamos al frontend de que se ha enviado correctamente para que cierre la ventana
-      socket.emit('suggestionSent');
-    } catch (error) {
-      console.error("Error al enviar el correo:", error);
-    }
-  });
+  try {
+    // Aquí va tu código actual de nodemailer...
+    const info = await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: process.env.EMAIL_USER,
+      subject: `💡 Nueva sugerencia de ${data.creador}`,
+      text: data.text
+    });
+
+    // CHIVATO 3: Si todo sale bien
+    console.log("✅ Correo enviado con éxito. ID:", info.messageId);
+
+  } catch (error) {
+    // CHIVATO 4: Si nodemailer falla, esto capturará el error exacto y te lo mostrará en Render
+    console.error("❌ ERROR CRÍTICO al enviar el correo:", error);
+  }
+});
 
   socket.on('disconnect', () => {
     console.log(`El usuario se ha desconectado: ${socket.id}`);
