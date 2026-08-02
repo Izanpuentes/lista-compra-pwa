@@ -76,12 +76,27 @@ app.get(/.*/, (req, res) => {
 
 // --- LÓGICA DE WEBSOCKETS (TIEMPO REAL) ---
 
+// Memoria central para los menús semanales de las casas
+const menusSemanales: Record<string, any> = {}; 
+
 io.on('connection', (socket) => {
   console.log(`Un usuario se ha conectado: ${socket.id}`);
 
   socket.on('joinHouse', (houseId) => {
     socket.join(houseId);
     console.log(`Usuario ${socket.id} se unió a la casa ${houseId}`);
+    
+    // Si la casa ya tiene un menú guardado, se lo mandamos al que acaba de entrar
+    if (menusSemanales[houseId]) {
+      socket.emit('menuUpdated', menusSemanales[houseId]);
+    }
+  });
+
+  // NUEVO: Escuchar cuando alguien cambia el menú y avisar al resto
+  socket.on('updateMenu', (data) => {
+    const { houseId, menu } = data;
+    menusSemanales[houseId] = menu; // Guardamos en el servidor
+    socket.to(houseId).emit('menuUpdated', menu); // Avisamos a los demás
   });
 
   socket.on('toggle-item', async (data) => {

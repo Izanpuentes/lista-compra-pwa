@@ -116,13 +116,18 @@ function App() {
     return guardado ? JSON.parse(guardado) : {};
   });
 
+  const sincronizarMenu = (nuevoMenu: any) => {
+    setMenuSemanal(nuevoMenu);
+    localStorage.setItem('menuSemanalAppV2', JSON.stringify(nuevoMenu));
+    socket.emit('updateMenu', { houseId, menu: nuevoMenu }); // Mandamos el cambio a los demás
+  };
+
   const handleEliminarRecetaCalendario = (dia: string, tipo: 'comida'|'cena') => {
     const nuevoMenu = {
       ...menuSemanal,
       [dia]: { ...(menuSemanal[dia] || { comida: null, cena: null }), [tipo]: null }
     };
-    setMenuSemanal(nuevoMenu);
-    localStorage.setItem('menuSemanalAppV2', JSON.stringify(nuevoMenu));
+    sincronizarMenu(nuevoMenu);
   };
 
   const handleAsignarRecetaDesdeCalendario = (receta: Receta) => {
@@ -131,10 +136,8 @@ function App() {
       ...menuSemanal,
       [modoAsignacion.dia]: { ...(menuSemanal[modoAsignacion.dia] || { comida: null, cena: null }), [modoAsignacion.tipo]: receta }
     };
-    setMenuSemanal(nuevoMenu);
-    localStorage.setItem('menuSemanalAppV2', JSON.stringify(nuevoMenu));
+    sincronizarMenu(nuevoMenu);
     
-    // Restauramos las pantallas
     setModoAsignacion(null);
     setIsRecetarioOpen(false);
     setIsCalendarOpen(true);
@@ -151,8 +154,7 @@ function App() {
       ...menuSemanal,
       [diaSeleccionado]: { ...(menuSemanal[diaSeleccionado] || { comida: null, cena: null }), [tipoComidaSeleccionado]: recetaParaCalendario }
     };
-    setMenuSemanal(nuevoMenu);
-    localStorage.setItem('menuSemanalAppV2', JSON.stringify(nuevoMenu));
+    sincronizarMenu(nuevoMenu);
 
     const diaNom = diasCalendario.find(d => d.id === diaSeleccionado)?.nombre || diaSeleccionado;
     alert(`✅ "${recetaParaCalendario.nombre}" asignado al ${diaNom} para la ${tipoComidaSeleccionado}`);
@@ -200,11 +202,18 @@ function App() {
       }
     });
 
+    // Escuchar si alguien actualiza el menú
+    socket.on('menuUpdated', (nuevoMenu) => {
+      setMenuSemanal(nuevoMenu);
+      localStorage.setItem('menuSemanalAppV2', JSON.stringify(nuevoMenu));
+    });
+
     return () => {
       socket.off('itemAdded')
       socket.off('item-toggled') 
       socket.off('itemDeleted')
       socket.off('suggestionSent')
+      socket.off('menuUpdated')
     }
   }, [houseId])
 
