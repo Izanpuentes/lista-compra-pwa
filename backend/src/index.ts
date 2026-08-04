@@ -152,8 +152,32 @@ io.on('connection', (socket) => {
   });
 
   // Cuando el backend escucha el evento de sugerencia...
+// Cuando el backend escucha el evento de sugerencia...
+// Cuando el backend escucha el evento de sugerencia...
 socket.on('sendSuggestion', async (data) => {
   console.log("📩 ¡Sugerencia recibida en el servidor por RESEND!", data);
+
+  try {
+    const dataResend = await resend.emails.send({
+      from: 'Acme <onboarding@resend.dev>', 
+      to: 'izanpuentes@gmail.com', 
+      subject: `💡 Nueva sugerencia de ${data.creador}`,
+      text: data.text
+    });
+
+    // Comprobamos si el compartimento 'error' trae algo
+    if (dataResend.error) {
+      console.error("❌ Resend ha devuelto un error:", dataResend.error);
+      return;
+    }
+
+    // Si no hay error, leemos el ID de dentro de 'data'
+    console.log("✅ Correo enviado con éxito por Resend. ID:", dataResend.data?.id);
+
+  } catch (error) {
+    // Esto captura fallos de conexión o caídas del servidor
+    console.error("❌ ERROR CRÍTICO al conectar con Resend:", error);
+  }
 });
 
   socket.on('disconnect', () => {
