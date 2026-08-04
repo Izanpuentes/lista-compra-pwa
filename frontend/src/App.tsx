@@ -80,6 +80,9 @@ function App() {
   const [houseId] = useState('a513962b-c0c9-446f-bf70-2684f545b4dd')
   const [items, setItems] = useState<ShoppingItem[]>([])
   
+  // --- ESTADO PARA PLATO MANUAL ---
+  const [platoManual, setPlatoManual] = useState('');
+
   const [updateAvailable, setUpdateAvailable] = useState(false);
 
   const [newItemName, setNewItemName] = useState('')
@@ -126,6 +129,35 @@ function App() {
       };
     }
     return menuNuevo;
+  };
+
+  const handleAñadirPlatoManual = () => {
+    if (!platoManual.trim() || !modoAsignacion) return;
+
+    // Creamos la "receta fantasma" para que el calendario la acepte
+    const nuevaRecetaManual: Receta = {
+      id: `manual-${Date.now()}`,
+      nombre: platoManual.trim(),
+      categoria: 'Plato rápido',
+      instrucciones: '',
+      ingredientes: []
+    };
+
+    const { dia, tipo } = modoAsignacion;
+    const diaData = menuSemanal[dia] || { comida: [], cena: [] };
+    
+    const nuevoMenu = {
+      ...menuSemanal,
+      [dia]: { ...diaData, [tipo]: [...(diaData[tipo] || []), nuevaRecetaManual] }
+    };
+
+    sincronizarMenu(nuevoMenu);
+    
+    // Limpiamos y volvemos al calendario
+    setPlatoManual('');
+    setModoAsignacion(null);
+    setIsRecetarioOpen(false);
+    setIsCalendarOpen(true);
   };
 
   const [menuSemanal, setMenuSemanal] = useState<Record<string, {comida: Receta[], cena: Receta[]}>>(() => {
@@ -718,13 +750,35 @@ function App() {
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 40px 20px' }}>
               {modoAsignacion && (
-                <div style={{ backgroundColor: '#f3e5f5', padding: '15px', borderRadius: '16px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #ce93d8' }}>
-                  <span style={{ color: '#6a1b9a', fontWeight: 'bold', fontSize: '15px' }}>
-                    📍 Seleccionando {modoAsignacion.tipo} para el {diasCalendario.find(d => d.id === modoAsignacion.dia)?.nombre.split(' ')[0]}
-                  </span>
-                  <button onClick={() => { setModoAsignacion(null); setIsRecetarioOpen(false); setIsCalendarOpen(true); }} style={{ border: 'none', background: 'white', color: '#6a1b9a', cursor: 'pointer', fontWeight: 'bold', padding: '8px 12px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                    Cancelar
-                  </button>
+                <div style={{ backgroundColor: '#f3e5f5', padding: '15px', borderRadius: '16px', marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '15px', border: '2px solid #ce93d8' }}>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: '#6a1b9a', fontWeight: 'bold', fontSize: '15px' }}>
+                      📍 Seleccionando {modoAsignacion.tipo} para el {diasCalendario.find(d => d.id === modoAsignacion.dia)?.nombre.split(' ')[0]}
+                    </span>
+                    <button onClick={() => { setModoAsignacion(null); setIsRecetarioOpen(false); setIsCalendarOpen(true); setPlatoManual(''); }} style={{ border: 'none', background: 'white', color: '#6a1b9a', cursor: 'pointer', fontWeight: 'bold', padding: '8px 12px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+                      Cancelar
+                    </button>
+                  </div>
+                  
+                  {/* NUEVO: Caja de texto para plato manual */}
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <input 
+                      type="text" 
+                      placeholder="O escribe un plato rápido (ej: Sandwich)" 
+                      value={platoManual}
+                      onChange={(e) => setPlatoManual(e.target.value)}
+                      onKeyDown={(e) => { if(e.key === 'Enter') handleAñadirPlatoManual(); }}
+                      style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid #ce93d8', outline: 'none', fontSize: '15px' }}
+                    />
+                    <button 
+                      onClick={handleAñadirPlatoManual}
+                      style={{ background: 'linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%)', color: 'white', border: 'none', borderRadius: '12px', padding: '0 15px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }}
+                    >
+                      Añadir
+                    </button>
+                  </div>
+
                 </div>
               )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
