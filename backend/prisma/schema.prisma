@@ -10,10 +10,11 @@ datasource db {
 model House {
   id          String   @id @default(uuid())
   name        String
-  inviteCode  String?   @unique
-  users       User[]   // Una casa tiene una lista de usuarios
+  inviteCode  String   @unique
+  adminId     String   
+  users       User[]   
   items       Item[]
-  menuSemanal Json?
+  menuSemanal Json?    
   createdAt   DateTime @default(now())
 }
 

@@ -71,6 +71,8 @@ app.get('/api/houses/:houseId/items', verificarToken, async (req: AuthRequest, r
   }
 });
 
+
+
 // Ruta para obtener todas las recetas con sus ingredientes
 app.get('/api/recetas', async (req, res) => {
   try {
@@ -100,6 +102,97 @@ app.use('/api/auth', authRoutes);
 
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
+// 1. OBTENER LOS MIEMBROS DE UNA CASA
+// 1. OBTENER LOS MIEMBROS DE UNA CASA
+app.get('/api/houses/:houseId/users', verificarToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const houseId = req.params.houseId as string; // Fijamos el tipo explícitamente a string
+
+    const house = await prisma.house.findUnique({
+      where: { id: houseId },
+      // Cambiamos 'nombre' por 'name' que es como está definido en tu base de datos
+      include: { users: { select: { id: true, name: true, email: true } } } 
+    });
+
+    if (!house) return res.status(404).json({ error: 'Casa no encontrada' });
+    
+    res.json({ adminId: house.adminId, users: house.users });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener usuarios' });
+  }
+});
+
+// 2. ABANDONAR UNA CASA (Para usuarios normales)
+app.post('/api/houses/:houseId/leave', verificarToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const houseId = req.params.houseId as string;
+    const userId = req.user?.userId;
+
+    if (!userId) return res.status(401).json({ error: 'Usuario no autenticado' });
+
+    const house = await prisma.house.findUnique({ where: { id: houseId } });
+    
+    if (house?.adminId === userId) {
+      return res.status(400).json({ error: 'El administrador no puede abandonar la casa, debe borrarla o transferirla.' });
+    }
+
+    await prisma.house.update({
+      where: { id: houseId },
+      data: { users: { disconnect: { id: userId } } }
+    });
+
+    res.json({ message: 'Has abandonado la casa correctamente' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al abandonar la casa' });
+  }
+});
+
+// 3. EXPULSAR A UN USUARIO (Solo Administrador)
+app.delete('/api/houses/:houseId/users/:targetUserId', verificarToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const houseId = req.params.houseId as string;
+    const targetUserId = req.params.targetUserId as string;
+    const adminId = req.user?.userId;
+
+    const house = await prisma.house.findUnique({ where: { id: houseId } });
+
+    if (house?.adminId !== adminId) {
+      return res.status(403).json({ error: 'No tienes permisos para expulsar usuarios.' });
+    }
+
+    await prisma.house.update({
+      where: { id: houseId },
+      data: { users: { disconnect: { id: targetUserId } } }
+    });
+
+    res.json({ message: 'Usuario expulsado correctamente' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al expulsar al usuario' });
+  }
+});
+
+// 4. ELIMINAR LA CASA POR COMPLETO (Solo Administrador)
+app.delete('/api/houses/:houseId', verificarToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const houseId = req.params.houseId as string;
+    const adminId = req.user?.userId;
+
+    const house = await prisma.house.findUnique({ where: { id: houseId } });
+
+    if (house?.adminId !== adminId) {
+      return res.status(403).json({ error: 'Solo el creador puede eliminar la casa.' });
+    }
+
+    // Prisma se encarga de borrar los items asociados
+    await prisma.item.deleteMany({ where: { houseId } });
+    await prisma.house.delete({ where: { id: houseId } });
+
+    res.json({ message: 'Casa eliminada correctamente' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar la casa' });
+  }
 });
 
 // --- LÓGICA DE WEBSOCKETS (TIEMPO REAL) ---

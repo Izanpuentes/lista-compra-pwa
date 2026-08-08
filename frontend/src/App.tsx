@@ -18,6 +18,12 @@ interface House {
   inviteCode: string;
 }
 
+interface HouseMember {
+  id: string;
+  name: string;
+  email: string;
+}
+
 interface Ingrediente {
   nombre: string;
 }
@@ -117,9 +123,11 @@ function App() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('listaCompraUser', data.usuario.nombre);
       localStorage.setItem('userHouses', JSON.stringify(casasUsuario));
+      localStorage.setItem('userId', data.usuario.id);
       if (primeraCasa) localStorage.setItem('houseId', primeraCasa);
 
       setCurrentUser(data.usuario.nombre);
+      setCurrentUserId(null);
       setUserHouses(casasUsuario);
       setHouseId(primeraCasa);
 
@@ -138,6 +146,11 @@ function App() {
   const [activeSupermarket, setActiveSupermarket] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
+
+  const [currentUserId, setCurrentUserId] = useState<string | null>(localStorage.getItem('userId'));
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [houseMembers, setHouseMembers] = useState<HouseMember[]>([]);
+  const [houseAdminId, setHouseAdminId] = useState<string | null>(null);
 
   const [isRecetarioOpen, setIsRecetarioOpen] = useState(false);
   const [recetasBaseDatos, setRecetasBaseDatos] = useState<Receta[]>([]);
@@ -472,6 +485,62 @@ function App() {
     return '#ffffff';
   }
 
+  // --- FUNCIONES DE ADMINISTRACIÓN ---
+  const abrirAdministracion = async () => {
+    try {
+      const res = await fetch(`/api/houses/${houseId}/users`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      if (!data.error) {
+        setHouseMembers(data.users);
+        setHouseAdminId(data.adminId);
+        setIsAdminModalOpen(true);
+      }
+    } catch (error) {
+      console.error("Error al abrir administración:", error);
+    }
+  };
+
+  const abandonarCasa = async () => {
+    if (!window.confirm("¿Seguro que quieres abandonar esta casa? Perderás el acceso.")) return;
+    try {
+      await fetch(`/api/houses/${houseId}/leave`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      window.location.reload(); 
+    } catch (error) {
+      console.error("Error al abandonar:", error);
+    }
+  };
+
+  const expulsarUsuario = async (targetId: string, nombre: string) => {
+    if (!window.confirm(`¿Seguro que quieres expulsar a ${nombre}?`)) return;
+    try {
+      await fetch(`/api/houses/${houseId}/users/${targetId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      setHouseMembers(prev => prev.filter(m => m.id !== targetId));
+    } catch (error) {
+      console.error("Error al expulsar:", error);
+    }
+  };
+
+  const eliminarCasa = async () => {
+    if (!window.confirm("¡ATENCIÓN! ¿Seguro que quieres borrar la casa entera y todas sus listas? Esta acción no se puede deshacer.")) return;
+    try {
+      await fetch(`/api/houses/${houseId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      window.location.reload();
+    } catch (error) {
+      console.error("Error al eliminar casa:", error);
+    }
+  };
+
   if (!currentUser || !houseId) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f2f5', fontFamily: 'system-ui, -apple-system, sans-serif', padding: '20px' }}>
@@ -565,11 +634,20 @@ function App() {
                     socket.emit('joinHouse', nuevaCasaId);
                   }}
                   style={{ flex: 1, padding: '12px', fontSize: '16px', borderRadius: '12px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', outline: 'none', color: '#333', fontWeight: 'bold' }}
+                
+                  
                 >
                   {userHouses.map(casa => (
                     <option key={casa.id} value={casa.id}>{casa.name} (Código: {casa.inviteCode})</option>
                   ))}
                 </select>
+                {/* NUEVO BOTÓN DE ENGRANAJE */}
+                <button 
+                  onClick={abrirAdministracion}
+                  style={{ padding: '12px', fontSize: '18px', borderRadius: '12px', border: '2px solid #f0f2f5', background: '#f8f9fa', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                >
+                  ⚙️
+                </button>
               </div>
             </div>
 
@@ -913,6 +991,48 @@ function App() {
                 <button onClick={() => procesarAñadirRecetasSeleccionadas('medina 3')} style={{ WebkitAppearance: 'none', padding: '20px 10px', fontSize: '16px', background: 'linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%)', color: 'white', border: 'none', borderRadius: '16px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(156,39,176,0.2)' }}>Medina 3</button>
               </div>
               <button onClick={() => setIsSupermarketModalOpen(false)} style={{ WebkitAppearance: 'none', padding: '15px', marginTop: '10px', borderRadius: '16px', border: 'none', cursor: 'pointer', backgroundColor: '#f0f2f5', color: '#444', fontWeight: 'bold', fontSize: '16px' }}>Cancelar</button>
+            </div>
+          </div>
+        )}
+
+        {/* --- MODAL DE ADMINISTRACIÓN --- */}
+        {isAdminModalOpen && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1300 }}>
+            <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '24px', width: '90%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', maxHeight: '80vh', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, color: '#1a1a1a', fontSize: '22px', fontWeight: '800' }}>⚙️ Administrar Casa</h3>
+                <button onClick={() => setIsAdminModalOpen(false)} style={{ background: '#f0f2f5', border: 'none', fontSize: '16px', cursor: 'pointer', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>❌</button>
+              </div>
+
+              <div>
+                <h4 style={{ margin: '0 0 10px 0', color: '#666', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>👥 Miembros</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {houseMembers.map(miembro => (
+                    <div key={miembro.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 15px', backgroundColor: '#f8f9fa', borderRadius: '16px', border: houseAdminId === miembro.id ? '2px solid #007bff' : '2px solid transparent' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontWeight: 'bold', color: '#333', fontSize: '16px' }}>{miembro.name} {currentUserId === miembro.id ? '(Tú)' : ''}</span>
+                        <span style={{ fontSize: '12px', color: '#888' }}>{houseAdminId === miembro.id ? '👑 Administrador' : 'Inquilino'}</span>
+                      </div>
+                      
+                      {currentUserId === houseAdminId && currentUserId !== miembro.id && (
+                        <button onClick={() => expulsarUsuario(miembro.id, miembro.name)} style={{ background: '#fff0f0', color: '#ff4d4f', border: 'none', borderRadius: '10px', padding: '8px 12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>Expulsar</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {currentUserId === houseAdminId ? (
+                  <button onClick={eliminarCasa} style={{ width: '100%', padding: '16px', borderRadius: '16px', border: 'none', background: '#ff4d4f', color: 'white', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(255,77,79,0.3)' }}>
+                    🗑️ Eliminar Casa
+                  </button>
+                ) : (
+                  <button onClick={abandonarCasa} style={{ width: '100%', padding: '16px', borderRadius: '16px', border: 'none', background: '#ff9800', color: 'white', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(255,152,0,0.3)' }}>
+                    🚪 Abandonar Casa
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
