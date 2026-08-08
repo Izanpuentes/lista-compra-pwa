@@ -1,1 +1,9 @@
 Tengo que hacer que el ordenamiento de la lista sea independiente de cada supermercado, ya que creo que de momento el orden siempre es el del Aldi
+
+Implementar el sistema para que más gente se pueda descargar la aplicación
+
+No funciona bien todavía lo de que sean varias cuentas, hay que afinarlo. Sigue sin preguntar una vez registrado si se quiere crear o unirse a una casa
+
+No funciona el botón de inicio de sesión una vez estás registrado, 
+
+No puedes crear ḿas casas o unirte a más casas una vez estés en el menú principal

@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type Response } from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
@@ -7,6 +7,9 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Resend } from 'resend';
+import authRoutes from './auth.routes.js';
+import { verificarToken, type AuthRequest } from './auth.middleware.js'; // o la ruta donde lo hayas guardado
+import jwt from 'jsonwebtoken';
 
 // Reemplazamos la configuración de nodemailer por la de Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -34,10 +37,29 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Obtener todos los artículos de una casa
-app.get('/api/houses/:houseId/items', async (req, res) => {
+// Obtener todos los artículos de una casa (Protegido por JWT y validación N:M)
+app.get('/api/houses/:houseId/items', verificarToken, async (req: AuthRequest, res: Response) => {
   try {
-    const { houseId } = req.params;
+    const houseId = req.params.houseId as string;
+    const userId = req.user?.userId;
+
+    // --- NUEVO: Validamos que userId exista para que TypeScript esté tranquilo ---
+    if (!userId) {
+      return res.status(401).json({ error: 'Usuario no autenticado de forma válida' });
+    }
+
+    // Seguridad extra: Comprobamos si el usuario pertenece a esta casa concreta
+    const casaPermitida = await prisma.house.findFirst({
+      where: {
+        id: houseId,
+        users: { some: { id: userId } } // Al pasar el 'if' de arriba, TypeScript ya sabe que es un string seguro
+      }
+    });
+
+    if (!casaPermitida) {
+      return res.status(403).json({ error: 'No tienes permiso para ver esta vivienda' });
+    }
+
     const items = await prisma.item.findMany({
       where: { houseId },
       orderBy: { createdAt: 'desc' } 
@@ -74,33 +96,75 @@ app.get('/api/trigger-update', (req, res) => {
 const frontendPath = path.join(__dirname, '../../frontend/dist');
 app.use(express.static(frontendPath));
 
+app.use('/api/auth', authRoutes);
+
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // --- LÓGICA DE WEBSOCKETS (TIEMPO REAL) ---
+ 
 
-// Memoria central para los menús semanales de las casas
-const menusSemanales: Record<string, any> = {}; 
+// --- MIDDLEWARE DE SEGURIDAD PARA WEBSOCKETS ---
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+
+  if (!token) {
+    return next(new Error('Autenticación requerida para tiempo real'));
+  }
+
+  try {
+    // El payload ya solo tiene userId
+    const payload = jwt.verify(token, process.env.JWT_SECRET || 'clave_secreta_de_desarrollo') as { userId: string };
+    
+    (socket as any).user = payload;
+    next();
+  } catch (error) {
+    return next(new Error('Token inválido o expirado'));
+  }
+});
 
 io.on('connection', (socket) => {
   console.log(`Un usuario se ha conectado: ${socket.id}`);
 
-  socket.on('joinHouse', (houseId) => {
+  socket.on('joinHouse', async (houseId) => {
     socket.join(houseId);
     console.log(`Usuario ${socket.id} se unió a la casa ${houseId}`);
     
-    // Si la casa ya tiene un menú guardado, se lo mandamos al que acaba de entrar
-    if (menusSemanales[houseId]) {
-      socket.emit('menuUpdated', menusSemanales[houseId]);
+    try {
+      // 1. Buscamos la casa en la base de datos
+      const casa = await prisma.house.findUnique({
+        where: { id: houseId },
+        select: { menuSemanal: true } // Solo pedimos el menú para ir más rápido
+      });
+
+      // 2. Si la casa tiene un menú guardado, se lo enviamos al móvil
+      if (casa && casa.menuSemanal) {
+        socket.emit('menuUpdated', casa.menuSemanal);
+      }
+    } catch (error) {
+      console.error("Error al cargar el menú desde la BD:", error);
     }
   });
 
   // NUEVO: Escuchar cuando alguien cambia el menú y avisar al resto
-  socket.on('updateMenu', (data) => {
+  // Escuchar cuando alguien cambia el menú y avisar al resto
+  socket.on('updateMenu', async (data) => {
     const { houseId, menu } = data;
-    menusSemanales[houseId] = menu; // Guardamos en el servidor
-    socket.to(houseId).emit('menuUpdated', menu); // Avisamos a los demás
+    
+    try {
+      // 1. Guardamos el menú en piedra en la base de datos
+      await prisma.house.update({
+        where: { id: houseId },
+        data: { menuSemanal: menu } // Prisma detectará automáticamente que es un JSON
+      });
+
+      // 2. Avisamos a los demás móviles conectados a la casa
+      socket.to(houseId).emit('menuUpdated', menu);
+      
+    } catch (error) {
+      console.error("Error al guardar el menú en la BD:", error);
+    }
   });
 
   socket.on('toggle-item', async (data) => {
