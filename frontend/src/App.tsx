@@ -488,17 +488,23 @@ function App() {
   // --- FUNCIONES DE ADMINISTRACIÓN ---
   const abrirAdministracion = async () => {
     try {
+      console.log("Intentando abrir administración para la casa:", houseId);
       const res = await fetch(`/api/houses/${houseId}/users`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const data = await res.json();
-      if (!data.error) {
+      console.log("Respuesta del servidor:", data);
+      
+      if (res.ok && !data.error) {
         setHouseMembers(data.users);
         setHouseAdminId(data.adminId);
         setIsAdminModalOpen(true);
+      } else {
+        alert("Error del servidor: " + (data.error || "No se pudo cargar la administración"));
       }
     } catch (error) {
-      console.error("Error al abrir administración:", error);
+      console.error("Error crítico al abrir administración:", error);
+      alert("Fallo de red al conectar con el servidor.");
     }
   };
 
