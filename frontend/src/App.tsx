@@ -152,6 +152,10 @@ function App() {
   const [houseMembers, setHouseMembers] = useState<HouseMember[]>([]);
   const [houseAdminId, setHouseAdminId] = useState<string | null>(null);
 
+  const [isAddHouseModalOpen, setIsAddHouseModalOpen] = useState(false);
+  const [addHouseMode, setAddHouseMode] = useState<'crear' | 'unirse'>('crear');
+  const [newHouseInput, setNewHouseInput] = useState('');
+
   const [isRecetarioOpen, setIsRecetarioOpen] = useState(false);
   const [recetasBaseDatos, setRecetasBaseDatos] = useState<Receta[]>([]);
   const [categoriaActiva, setCategoriaActiva] = useState('Todas');
@@ -547,6 +551,32 @@ function App() {
     }
   };
 
+  const procesarAñadirCasa = async () => {
+    if (!newHouseInput.trim()) return;
+    try {
+      const endpoint = addHouseMode === 'crear' ? '/api/houses' : '/api/houses/join';
+      const payload = addHouseMode === 'crear' ? { name: newHouseInput } : { inviteCode: newHouseInput };
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (res.ok && !data.error) {
+        window.location.reload(); // Recargamos para que lea el nuevo array de casas de la BD
+      } else {
+        alert(data.error || 'Error al procesar la solicitud');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
   if (!currentUser || !houseId) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f2f5', fontFamily: 'system-ui, -apple-system, sans-serif', padding: '20px' }}>
@@ -738,6 +768,33 @@ function App() {
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
                 <button onClick={() => setIsSuggestionOpen(false)} style={{ WebkitAppearance: 'none', padding: '12px 20px', borderRadius: '14px', border: 'none', cursor: 'pointer', backgroundColor: '#f0f2f5', color: '#444', fontWeight: 'bold' }}>Cancelar</button>
                 <button onClick={handleSendSuggestion} style={{ WebkitAppearance: 'none', padding: '12px 20px', borderRadius: '14px', border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #28a745 0%, #208838 100%)', color: 'white', fontWeight: 'bold' }}>Enviar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- MODAL AÑADIR/UNIRSE A CASA --- */}
+        {isAddHouseModalOpen && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1400 }}>
+            <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '24px', width: '90%', maxWidth: '350px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+              <h3 style={{ margin: 0, textAlign: 'center', color: '#1a1a1a', fontSize: '22px', fontWeight: '800' }}>Nueva Casa</h3>
+              
+              <div style={{ display: 'flex', backgroundColor: '#f0f2f5', borderRadius: '12px', padding: '4px' }}>
+                <button onClick={() => setAddHouseMode('crear')} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: addHouseMode === 'crear' ? 'white' : 'transparent', color: addHouseMode === 'crear' ? '#007bff' : '#666', fontWeight: 'bold', cursor: 'pointer', boxShadow: addHouseMode === 'crear' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.2s' }}>Crear</button>
+                <button onClick={() => setAddHouseMode('unirse')} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: addHouseMode === 'unirse' ? 'white' : 'transparent', color: addHouseMode === 'unirse' ? '#007bff' : '#666', fontWeight: 'bold', cursor: 'pointer', boxShadow: addHouseMode === 'unirse' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.2s' }}>Unirse</button>
+              </div>
+
+              <input 
+                type="text" 
+                placeholder={addHouseMode === 'crear' ? "Nombre de la casa..." : "Código de invitación..."} 
+                value={newHouseInput} 
+                onChange={(e) => setNewHouseInput(e.target.value)} 
+                style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa', color: '#333' }} 
+              />
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={() => setIsAddHouseModalOpen(false)} style={{ flex: 1, padding: '14px', borderRadius: '14px', border: 'none', cursor: 'pointer', backgroundColor: '#f0f2f5', color: '#444', fontWeight: 'bold', fontSize: '16px' }}>Cancelar</button>
+                <button onClick={procesarAñadirCasa} style={{ flex: 1, padding: '14px', borderRadius: '14px', border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)', color: 'white', fontWeight: 'bold', fontSize: '16px', boxShadow: '0 4px 10px rgba(0,123,255,0.3)' }}>Aceptar</button>
               </div>
             </div>
           </div>
@@ -1029,7 +1086,13 @@ function App() {
               </div>
 
               <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {currentUserId === houseAdminId ? (
+                {/* NUEVO BOTÓN PARA AÑADIR CASA */}
+                <button 
+                  onClick={() => { setIsAdminModalOpen(false); setIsAddHouseModalOpen(true); }} 
+                  style={{ width: '100%', padding: '16px', borderRadius: '16px', border: 'none', background: '#e0f0ff', color: '#007bff', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,123,255,0.2)' }}
+                >
+                  ➕ Añadir o unirse a otra casa
+                </button>  {currentUserId === houseAdminId ? (
                   <button onClick={eliminarCasa} style={{ width: '100%', padding: '16px', borderRadius: '16px', border: 'none', background: '#ff4d4f', color: 'white', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(255,77,79,0.3)' }}>
                     🗑️ Eliminar Casa
                   </button>

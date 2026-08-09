@@ -190,6 +190,51 @@ app.delete('/api/houses/:houseId', verificarToken, async (req: AuthRequest, res:
   }
 });
 
+// 5. CREAR UNA CASA NUEVA (Para un usuario ya registrado)
+app.post('/api/houses', verificarToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    const { name } = req.body;
+    if (!userId) return res.status(401).json({ error: 'No autorizado' });
+
+    const generarCodigo = () => Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    const nuevaCasa = await prisma.house.create({
+      data: {
+        name: name || 'Nueva Casa',
+        inviteCode: generarCodigo(),
+        adminId: userId,
+        users: { connect: { id: userId } }
+      }
+    });
+
+    res.json(nuevaCasa);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al crear la casa' });
+  }
+});
+
+// 6. UNIRSE A UNA CASA EXISTENTE (Para un usuario ya registrado)
+app.post('/api/houses/join', verificarToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    const { inviteCode } = req.body;
+    if (!userId) return res.status(401).json({ error: 'No autorizado' });
+
+    const house = await prisma.house.findUnique({ where: { inviteCode } });
+    if (!house) return res.status(404).json({ error: 'Código de invitación no válido' });
+
+    const updatedHouse = await prisma.house.update({
+      where: { id: house.id },
+      data: { users: { connect: { id: userId } } }
+    });
+
+    res.json(updatedHouse);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al unirse a la casa' });
+  }
+});
+
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
