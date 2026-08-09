@@ -645,23 +645,7 @@ function App() {
         {/* --- PANTALLA PRINCIPAL --- */}
         {!activeSupermarket && (
           <div style={{ display: 'flex', flexDirection: 'column', marginTop: '30px', animation: 'fadeIn 0.3s ease-in-out' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '35px', backgroundColor: 'white', padding: '20px', borderRadius: '24px', boxShadow: '0 8px 25px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h1 style={{ margin: 0, fontSize: '28px', color: '#1a1a1a', fontWeight: '800', letterSpacing: '-0.5px' }}>Tus Listas</h1>
-                <button 
-                  onClick={() => {
-                    socket.disconnect();
-                    localStorage.clear();
-                    setCurrentUser(null); 
-                    setHouseId(null); 
-                    setUserHouses([]);
-                  }}
-                  style={{ background: '#fff0f0', border: 'none', padding: '8px 12px', borderRadius: '12px', cursor: 'pointer', color: '#ff4d4f', fontWeight: 'bold', fontSize: '14px' }}
-                >
-                  Cerrar sesión
-                </button>
-              </div>
-              <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '35px', backgroundColor: 'white', padding: '20px', borderRadius: '24px', boxShadow: '0 8px 25px rgba(0,0,0,0.05)' }}>
+            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '35px', backgroundColor: 'white', padding: '20px', borderRadius: '24px', boxShadow: '0 8px 25px rgba(0,0,0,0.05)' }}>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -732,6 +716,8 @@ function App() {
                 </div>
               )}
             </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -813,7 +799,7 @@ function App() {
           </button>
           
         </div>
-        
+
         {/* --- MODAL SUGERENCIAS --- */}
         {isSuggestionOpen && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
