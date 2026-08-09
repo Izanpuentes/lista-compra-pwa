@@ -7,3 +7,5 @@ No funciona bien todavía lo de que sean varias cuentas, hay que afinarlo. Sigue
 No funciona el botón de inicio de sesión una vez estás registrado, 
 
 No puedes crear ḿas casas o unirte a más casas una vez estés en el menú principal
+
+Hay que arreglar el inicio de sesión, el problema está en el json: rror crítico al abrir administración: SyntaxError: JSON.parse: unexpected character at line 1 column 1 of the JSON datacd 

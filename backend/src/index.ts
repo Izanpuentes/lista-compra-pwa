@@ -100,11 +100,6 @@ app.use(express.static(frontendPath));
 
 app.use('/api/auth', authRoutes);
 
-app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(frontendPath, 'index.html'));
-});
-
-// 1. OBTENER LOS MIEMBROS DE UNA CASA
 // 1. OBTENER LOS MIEMBROS DE UNA CASA
 app.get('/api/houses/:houseId/users', verificarToken, async (req: AuthRequest, res: Response) => {
   try {
@@ -193,6 +188,10 @@ app.delete('/api/houses/:houseId', verificarToken, async (req: AuthRequest, res:
   } catch (error) {
     res.status(500).json({ error: 'Error al eliminar la casa' });
   }
+});
+
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // --- LÓGICA DE WEBSOCKETS (TIEMPO REAL) ---
