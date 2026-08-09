@@ -147,6 +147,8 @@ function App() {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
 
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
   const [currentUserId, setCurrentUserId] = useState<string | null>(localStorage.getItem('userId'));
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [houseMembers, setHouseMembers] = useState<HouseMember[]>([]);
@@ -659,32 +661,77 @@ function App() {
                   Cerrar sesión
                 </button>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '24px' }}>🏠</span>
-                <select 
-                  value={houseId || ''} 
-                  onChange={(e) => {
-                    const nuevaCasaId = e.target.value;
-                    setHouseId(nuevaCasaId);
-                    localStorage.setItem('houseId', nuevaCasaId);
-                    socket.emit('joinHouse', nuevaCasaId);
-                  }}
-                  style={{ flex: 1, padding: '12px', fontSize: '16px', borderRadius: '12px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', outline: 'none', color: '#333', fontWeight: 'bold' }}
-                
-                  
-                >
-                  {userHouses.map(casa => (
-                    <option key={casa.id} value={casa.id}>{casa.name} (Código: {casa.inviteCode})</option>
-                  ))}
-                </select>
-                {/* NUEVO BOTÓN DE ENGRANAJE */}
+              <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '35px', backgroundColor: 'white', padding: '20px', borderRadius: '24px', boxShadow: '0 8px 25px rgba(0,0,0,0.05)' }}>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <h1 style={{ margin: 0, fontSize: '28px', color: '#1a1a1a', fontWeight: '800', letterSpacing: '-0.5px' }}>Tus Listas</h1>
+                  <span style={{ color: '#666', fontSize: '14px', fontWeight: '600' }}>
+                    🏠 {userHouses.find(h => h.id === houseId)?.name}
+                  </span>
+                </div>
+
                 <button 
-                  onClick={abrirAdministracion}
-                  style={{ padding: '12px', fontSize: '18px', borderRadius: '12px', border: '2px solid #f0f2f5', background: '#f8f9fa', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  style={{ background: '#f0f2f5', border: 'none', padding: '8px 16px', borderRadius: '12px', cursor: 'pointer', fontSize: '22px', fontWeight: 'bold', color: '#333' }}
                 >
-                  ⚙️
+                  ⋮
                 </button>
               </div>
+
+              {/* --- MENÚ DESPLEGABLE DE 3 PUNTOS --- */}
+              {isMenuOpen && (
+                <div style={{ position: 'absolute', top: '75px', right: '20px', background: 'white', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', borderRadius: '16px', padding: '15px', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '12px', width: '230px', border: '1px solid #eee', animation: 'fadeIn 0.2s ease-in-out' }}>
+                  
+                  {/* Selector de Casas */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', color: '#999', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Cambiar de casa</label>
+                    <select 
+                      value={houseId || ''} 
+                      onChange={(e) => {
+                        const nuevaCasaId = e.target.value;
+                        setHouseId(nuevaCasaId);
+                        localStorage.setItem('houseId', nuevaCasaId);
+                        socket.emit('joinHouse', nuevaCasaId);
+                        setIsMenuOpen(false);
+                      }}
+                      style={{ padding: '10px', fontSize: '14px', borderRadius: '10px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', outline: 'none', color: '#333', fontWeight: 'bold' }}
+                    >
+                      {userHouses.map(casa => (
+                        <option key={casa.id} value={casa.id}>{casa.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <hr style={{ width: '100%', border: 'none', borderTop: '1px solid #f0f2f5', margin: '5px 0' }} />
+
+                  {/* Administrar Casa */}
+                  <button onClick={() => { setIsMenuOpen(false); abrirAdministracion(); }} style={{ background: 'transparent', border: 'none', padding: '8px 0', textAlign: 'left', cursor: 'pointer', fontSize: '15px', fontWeight: '600', color: '#333', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    ⚙️ Administrar Casa
+                  </button>
+
+                  {/* Sugerencias */}
+                  <button onClick={() => { setIsMenuOpen(false); setIsSuggestionOpen(true); }} style={{ background: 'transparent', border: 'none', padding: '8px 0', textAlign: 'left', cursor: 'pointer', fontSize: '15px', fontWeight: '600', color: '#333', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    💡 Enviar sugerencia
+                  </button>
+
+                  {/* Cerrar Sesión */}
+                  <button 
+                    onClick={() => {
+                      socket.disconnect();
+                      localStorage.clear();
+                      setCurrentUser(null);
+                      setCurrentUserId(null);
+                      setHouseId(null);
+                      setUserHouses([]);
+                    }}
+                    style={{ background: '#fff0f0', border: 'none', padding: '10px', borderRadius: '10px', textAlign: 'center', cursor: 'pointer', color: '#ff4d4f', fontWeight: 'bold', fontSize: '15px', marginTop: '5px' }}
+                  >
+                    🚪 Cerrar sesión
+                  </button>
+                </div>
+              )}
+            </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -754,11 +801,19 @@ function App() {
           </div>
         )}
 
-        {/* --- BOTONES FLOTANTES --- */}
-        <button onClick={() => setIsRecetarioOpen(true)} style={{ WebkitAppearance: 'none', position: 'fixed', bottom: '25px', left: '25px', width: '65px', height: '65px', borderRadius: '50%', background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)', color: 'white', border: 'none', fontSize: '28px', boxShadow: '0 8px 20px rgba(255,152,0,0.4)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 999 }}>📖</button>
-        <button onClick={() => setIsCalendarOpen(true)} style={{ WebkitAppearance: 'none', position: 'fixed', bottom: '25px', left: '50%', transform: 'translateX(-50%)', width: '75px', height: '75px', borderRadius: '50%', background: 'linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%)', color: 'white', border: 'none', fontSize: '32px', boxShadow: '0 8px 25px rgba(156,39,176,0.4)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 999 }}>📅</button>
-        <button onClick={() => setIsSuggestionOpen(true)} style={{ WebkitAppearance: 'none', position: 'fixed', bottom: '25px', right: '25px', width: '65px', height: '65px', borderRadius: '50%', background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)', color: 'white', border: 'none', fontSize: '28px', boxShadow: '0 8px 20px rgba(0,123,255,0.4)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>💡</button>
-
+        {/* --- BOTONES FLOTANTES REDISEÑADOS --- */}
+        <div style={{ position: 'fixed', bottom: '30px', left: '0', right: '0', display: 'flex', justifyContent: 'center', gap: '30px', zIndex: 999, pointerEvents: 'none' }}>
+          
+          <button onClick={() => setIsRecetarioOpen(true)} style={{ pointerEvents: 'auto', WebkitAppearance: 'none', width: '70px', height: '70px', borderRadius: '50%', background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)', color: 'white', border: 'none', fontSize: '30px', boxShadow: '0 8px 20px rgba(255,152,0,0.4)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', transition: 'transform 0.1s' }}>
+            📖
+          </button>
+          
+          <button onClick={() => setIsCalendarOpen(true)} style={{ pointerEvents: 'auto', WebkitAppearance: 'none', width: '70px', height: '70px', borderRadius: '50%', background: 'linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%)', color: 'white', border: 'none', fontSize: '32px', boxShadow: '0 8px 25px rgba(156,39,176,0.4)', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', transition: 'transform 0.1s' }}>
+            📅
+          </button>
+          
+        </div>
+        
         {/* --- MODAL SUGERENCIAS --- */}
         {isSuggestionOpen && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
