@@ -235,6 +235,55 @@ app.post('/api/houses/join', verificarToken, async (req: AuthRequest, res: Respo
   }
 });
 
+// --- RUTA TEMPORAL PARA RESTAURAR RECETAS ---
+app.get('/api/restaurar-recetas', async (req, res) => {
+  try {
+    // 1. Limpiamos la base de datos
+    await prisma.ingrediente.deleteMany();
+    await prisma.receta.deleteMany();
+
+    // 2. Definimos las recetas directamente aquí (puedes pegar tu JSON completo si quieres)
+    const misRecetas = [
+      {
+        nombre: "Ensalada Mediterránea",
+        categoria: "Ensaladas",
+        instrucciones: "Lavar y cortar todo. Mezclar con aceite de oliva.",
+        ingredientes: ["Tomate", "Pepino", "Cebolla", "Aceite de oliva", "Queso Feta"]
+      },
+      {
+        nombre: "Tortilla de Patatas",
+        categoria: "Tapas",
+        instrucciones: "Pelar y freír las patatas. Batir los huevos, mezclar y cuajar en la sartén a fuego medio.",
+        ingredientes: ["Huevos", "Patatas", "Aceite", "Sal", "Cebolla"]
+      },
+      {
+        nombre: "Macarrones con Tomate",
+        categoria: "Pastas",
+        instrucciones: "Hervir la pasta. Sofreír la carne y mezclar con tomate frito.",
+        ingredientes: ["Macarrones", "Carne picada", "Tomate frito", "Queso rallado"]
+      }
+    ];
+
+    // 3. Las insertamos
+    for (const receta of misRecetas) {
+      await prisma.receta.create({
+        data: {
+          nombre: receta.nombre,
+          categoria: receta.categoria,
+          instrucciones: receta.instrucciones,
+          ingredientes: {
+            create: receta.ingredientes.map((ing) => ({ nombre: ing }))
+          }
+        }
+      });
+    }
+
+    res.send("<h2>✅ ¡Éxito! Las recetas se han restaurado correctamente desde Render.</h2>");
+  } catch (error: any) {
+    res.status(500).send(`<h2>❌ Error al restaurar:</h2><p>${error.message}</p>`);
+  }
+});
+
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
