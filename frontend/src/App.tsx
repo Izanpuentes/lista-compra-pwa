@@ -579,6 +579,36 @@ function App() {
     }
   };
 
+  const compartirCasa = async () => {
+    const casaActual = userHouses.find(h => h.id === houseId);
+    if (!casaActual || !casaActual.inviteCode) {
+      alert("No se pudo encontrar el código de invitación de esta casa.");
+      return;
+    }
+
+    const enlaceInvitacion = `${window.location.origin}?invite=${casaActual.inviteCode}`;
+    const mensaje = `¡Únete a mi casa "${casaActual.name}" en la app de la lista de la compra!\n\nPincha aquí: ${enlaceInvitacion}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Invitación a mi casa',
+          text: mensaje,
+        });
+      } catch (error) {
+        console.log('El usuario canceló o hubo un error al compartir.', error);
+      }
+    } else {
+      // Alternativa por si se usa desde un ordenador que no tenga menú de compartir
+      try {
+        await navigator.clipboard.writeText(mensaje);
+        alert("¡Enlace copiado al portapapeles! Ya puedes pegarlo y enviarlo a quien quieras.");
+      } catch (error) {
+        alert("Error al copiar el enlace.");
+      }
+    }
+  };
+
   if (!currentUser || !houseId) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f2f5', fontFamily: 'system-ui, -apple-system, sans-serif', padding: '20px' }}>
@@ -688,6 +718,11 @@ function App() {
                   </div>
 
                   <hr style={{ width: '100%', border: 'none', borderTop: '1px solid #f0f2f5', margin: '5px 0' }} />
+
+                  {/* Compartir Casa */}
+                  <button onClick={() => { setIsMenuOpen(false); compartirCasa(); }} style={{ background: 'transparent', border: 'none', padding: '8px 0', textAlign: 'left', cursor: 'pointer', fontSize: '15px', fontWeight: '600', color: '#007bff', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    🔗 Compartir invitación
+                  </button>
 
                   {/* Administrar Casa */}
                   <button onClick={() => { setIsMenuOpen(false); abrirAdministracion(); }} style={{ background: 'transparent', border: 'none', padding: '8px 0', textAlign: 'left', cursor: 'pointer', fontSize: '15px', fontWeight: '600', color: '#333', display: 'flex', gap: '10px', alignItems: 'center' }}>
