@@ -153,6 +153,26 @@ function App() {
   const recognitionRef = useRef<any>(null);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Si el menú está abierto y el clic NO ha sido dentro del menú, lo cerramos
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    // Solo escuchamos los clics cuando el menú está abierto para ahorrar recursos
+    if (isMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMenuOpen]);
   
   const [currentUserId, setCurrentUserId] = useState<string | null>(localStorage.getItem('userId'));
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
@@ -723,9 +743,7 @@ useEffect(() => {
         {/* --- PANTALLA PRINCIPAL --- */}
         {!activeSupermarket && (
           <div style={{ display: 'flex', flexDirection: 'column', marginTop: '30px', animation: 'fadeIn 0.3s ease-in-out' }}>
-            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '35px', backgroundColor: 'white', padding: '20px', borderRadius: '24px', boxShadow: '0 8px 25px rgba(0,0,0,0.05)' }}>
-              
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div ref={menuRef} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '35px', backgroundColor: 'white', padding: '20px', borderRadius: '24px', boxShadow: '0 8px 25px rgba(0,0,0,0.05)' }}>  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <h1 style={{ margin: 0, fontSize: '28px', color: '#1a1a1a', fontWeight: '800', letterSpacing: '-0.5px' }}>Tus Listas</h1>
                   <span style={{ color: '#666', fontSize: '14px', fontWeight: '600' }}>
@@ -823,8 +841,7 @@ useEffect(() => {
         {/* --- PANTALLA LISTA DE LA COMPRA --- */}
         {activeSupermarket && (
           <div>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-              {houseLists.length > 1 && (
+            <div ref={menuRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>  {houseLists.length > 1 && (
                 <button onClick={() => setActiveSupermarket(null)} style={{ WebkitAppearance: 'none', padding: '10px 14px', fontSize: '16px', cursor: 'pointer', borderRadius: '14px', border: 'none', backgroundColor: 'rgba(0,0,0,0.05)', color: '#444', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>⬅️</button>
               )}
               <h1 style={{ margin: 0, textTransform: 'capitalize', fontSize: '22px', fontWeight: '800', color: '#1a1a1a', flex: 1, textAlign: houseLists.length > 1 ? 'center' : 'left' }}>{activeSupermarket}</h1>
