@@ -80,6 +80,22 @@ function App() {
   const [authName, setAuthName] = useState('');
   const [authError, setAuthError] = useState('');
   
+  const [houseLists, setHouseLists] = useState<string[]>(['Mi Compra']);
+
+  const añadirLista = () => {
+    const nombre = window.prompt("Nombre de la nueva lista o supermercado:");
+    if (nombre && nombre.trim()) {
+      socket.emit('addList', { houseId, listName: nombre.trim() });
+    }
+  };
+
+  const eliminarLista = (lista: string) => {
+    if (window.confirm(`¿Seguro que quieres borrar la lista "${lista}" y todos sus productos?`)) {
+      socket.emit('deleteList', { houseId, listName: lista });
+      if (activeSupermarket === lista) setActiveSupermarket(null);
+    }
+  };
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const invite = params.get('invite');
@@ -324,6 +340,8 @@ function App() {
     socket.connect();
     socket.emit('joinHouse', houseId);
 
+    socket.on('listasUpdated', (listas) => setHouseLists(listas));
+
     socket.on('connect', () => {
       const colaOffline = JSON.parse(localStorage.getItem('colaSincronizacion') || '[]');
       if (colaOffline.length > 0) {
@@ -348,6 +366,7 @@ function App() {
       socket.off('itemDeleted')
       socket.off('appUpdated')
       socket.off('menuUpdated')
+      socket.off('listasUpdated')
     }
   }, [houseId]);
 
@@ -786,14 +805,20 @@ function App() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <button onClick={() => setActiveSupermarket('aldi')} style={{ WebkitAppearance: 'none', padding: '30px 10px', fontSize: '20px', background: 'linear-gradient(135deg, #005b9f 0%, #003f75 100%)', color: 'white', border: 'none', borderRadius: '24px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', boxShadow: '0 10px 20px rgba(0,91,159,0.25)', transition: 'transform 0.1s' }}><span style={{ fontSize: '34px', background: 'rgba(255,255,255,0.15)', padding: '16px', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛍️</span>Aldi</button>
-              <button onClick={() => setActiveSupermarket('medina 3')} style={{ WebkitAppearance: 'none', padding: '30px 10px', fontSize: '20px', background: 'linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%)', color: 'white', border: 'none', borderRadius: '24px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', boxShadow: '0 10px 20px rgba(156,39,176,0.25)' }}><span style={{ fontSize: '34px', background: 'rgba(255,255,255,0.15)', padding: '16px', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🏪</span>Medina 3</button>
-              <button onClick={() => setActiveSupermarket('mercadona')} style={{ WebkitAppearance: 'none', padding: '30px 10px', fontSize: '20px', background: 'linear-gradient(135deg, #00824b 0%, #005c35 100%)', color: 'white', border: 'none', borderRadius: '24px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', boxShadow: '0 10px 20px rgba(0,130,75,0.25)' }}><span style={{ fontSize: '34px', background: 'rgba(255,255,255,0.15)', padding: '16px', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🧺</span>Mercadona</button>
-              <button onClick={() => setActiveSupermarket('lidl')} style={{ WebkitAppearance: 'none', padding: '30px 10px', fontSize: '20px', background: 'linear-gradient(135deg, #ffd700 0%, #f0b400 100%)', color: '#003f75', border: 'none', borderRadius: '24px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', boxShadow: '0 10px 20px rgba(255,215,0,0.3)' }}><span style={{ fontSize: '34px', background: 'rgba(0,63,117,0.1)', padding: '16px', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</span>Lidl</button>
-              <button onClick={() => setActiveSupermarket('costco')} style={{ WebkitAppearance: 'none', padding: '30px 10px', fontSize: '20px', background: 'linear-gradient(135deg, #e31837 0%, #a61027 100%)', color: 'white', border: 'none', borderRadius: '24px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', boxShadow: '0 10px 20px rgba(227,24,55,0.25)' }}><span style={{ fontSize: '34px', background: 'rgba(255,255,255,0.15)', padding: '16px', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📦</span>Costco</button>
+              {houseLists.map(lista => (
+                <div key={lista} style={{ position: 'relative', display: 'flex' }}>
+                  <button onClick={() => setActiveSupermarket(lista)} style={{ width: '100%', WebkitAppearance: 'none', padding: '30px 10px', fontSize: '18px', background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)', color: 'white', border: 'none', borderRadius: '24px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', boxShadow: '0 10px 20px rgba(0,123,255,0.25)', transition: 'transform 0.1s' }}>
+                    <span style={{ fontSize: '34px', background: 'rgba(255,255,255,0.15)', padding: '16px', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</span>
+                    {lista}
+                  </button>
+                  <button onClick={() => eliminarLista(lista)} style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#ff4d4f', color: 'white', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>✕</button>
+                </div>
+              ))}
+              
+              <button onClick={añadirLista} style={{ width: '100%', WebkitAppearance: 'none', padding: '30px 10px', fontSize: '18px', background: '#f8f9fa', color: '#888', border: '3px dashed #ddd', borderRadius: '24px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', transition: 'all 0.2s' }}>
+                <span style={{ fontSize: '34px', opacity: 0.5 }}>➕</span>
+                Nueva Lista
+              </button>
             </div>
           </div>
         )}

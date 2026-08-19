@@ -12,7 +12,8 @@ model House {
   id          String   @id @default(uuid())
   name        String
   inviteCode  String   @unique
-  adminId     String   
+  adminId     String
+  listas      String[] @default(["Compra"])
   users       User[]   
   items       Item[]
   menuSemanal Json?    

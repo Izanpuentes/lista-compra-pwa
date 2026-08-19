@@ -867,21 +867,18 @@ io.on('connection', (socket) => {
 
   socket.on('joinHouse', async (houseId) => {
     socket.join(houseId);
-    console.log(`Usuario ${socket.id} se unió a la casa ${houseId}`);
-    
     try {
-      // 1. Buscamos la casa en la base de datos
       const casa = await prisma.house.findUnique({
         where: { id: houseId },
-        select: { menuSemanal: true } // Solo pedimos el menú para ir más rápido
+        select: { menuSemanal: true, listas: true } // Pedimos también las listas
       });
 
-      // 2. Si la casa tiene un menú guardado, se lo enviamos al móvil
-      if (casa && casa.menuSemanal) {
-        socket.emit('menuUpdated', casa.menuSemanal);
+      if (casa) {
+        if (casa.menuSemanal) socket.emit('menuUpdated', casa.menuSemanal);
+        if (casa.listas) socket.emit('listasUpdated', casa.listas); // Enviamos las listas
       }
     } catch (error) {
-      console.error("Error al cargar el menú desde la BD:", error);
+      console.error("Error al cargar datos de la casa:", error);
     }
   });
 
@@ -939,6 +936,29 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error("Error al añadir item por WebSocket:", error);
     }
+  });
+
+  socket.on('addList', async ({ houseId, listName }) => {
+    try {
+      const casa = await prisma.house.findUnique({ where: { id: houseId } });
+      if (casa && !casa.listas.includes(listName)) {
+        const nuevasListas = [...casa.listas, listName];
+        await prisma.house.update({ where: { id: houseId }, data: { listas: nuevasListas } });
+        io.to(houseId).emit('listasUpdated', nuevasListas);
+      }
+    } catch (error) { console.error(error); }
+  });
+
+  socket.on('deleteList', async ({ houseId, listName }) => {
+    try {
+      const casa = await prisma.house.findUnique({ where: { id: houseId } });
+      if (casa) {
+        const nuevasListas = casa.listas.filter(l => l !== listName);
+        await prisma.house.update({ where: { id: houseId }, data: { listas: nuevasListas } });
+        await prisma.item.deleteMany({ where: { houseId, supermercado: listName } }); // Borramos sus productos
+        io.to(houseId).emit('listasUpdated', nuevasListas);
+      }
+    } catch (error) { console.error(error); }
   });
 
   socket.on('deleteItem', async (data) => {
