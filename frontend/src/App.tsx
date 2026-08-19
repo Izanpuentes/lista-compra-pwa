@@ -102,10 +102,7 @@ function App() {
         : { 
             nombre: authName,
             email: authEmail, 
-            password: authPassword, 
-            accion: authInviteCode.trim() !== '' ? 'unirse' : 'crear',
-            codigoInvitacion: authInviteCode,
-            nombreVivienda: `Casa de ${authName}`
+            password: authPassword,
           };
 
       const res = await fetch(endpoint, {
@@ -609,10 +606,10 @@ function App() {
     }
   };
 
-  if (!currentUser || !houseId) {
+  // 1. SI NO HAY USUARIO LOGUEADO (Pantalla pura de Login/Registro)
+  if (!currentUser) {
     return (
       <>
-        {/* --- FIX GLOBAL PARA EL MODO OSCURO (LOGIN) --- */}
         <style>{`
           :root { color-scheme: light; }
           body { color: #1a1a1a; }
@@ -620,38 +617,63 @@ function App() {
           ::placeholder { color: #999 !important; opacity: 1; }
         `}</style>
 
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f2f5', fontFamily: 'system-ui, -apple-system, sans-serif', padding: '20px' }}>
+          <div style={{ backgroundColor: 'white', padding: '40px 30px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', width: '100%', maxWidth: '350px', animation: 'fadeIn 0.5s ease' }}>
+            <h1 style={{ margin: '0 0 25px 0', textAlign: 'center', fontSize: '28px', color: '#1a1a1a', fontWeight: '800' }}>
+              {isLoginMode ? '¡Hola de nuevo! 👋' : 'Crear Cuenta 👤'}
+            </h1>
+            {authError && (
+              <div style={{ backgroundColor: '#fff0f0', color: '#ff4d4f', padding: '12px', borderRadius: '12px', marginBottom: '20px', fontSize: '14px', textAlign: 'center', fontWeight: 'bold' }}>{authError}</div>
+            )}
+            <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              {!isLoginMode && (
+                <input type="text" placeholder="Tu Nombre (ej: Mamá)" value={authName} onChange={e => setAuthName(e.target.value)} required style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa' }} />
+              )}
+              <input type="email" placeholder="Correo electrónico" value={authEmail} onChange={e => setAuthEmail(e.target.value)} required style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa' }} />
+              <input type="password" placeholder="Contraseña" value={authPassword} onChange={e => setAuthPassword(e.target.value)} required style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa' }} />
+              <button type="submit" style={{ padding: '16px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)', color: 'white', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px', boxShadow: '0 4px 15px rgba(0,123,255,0.3)' }}>
+                {isLoginMode ? 'Entrar' : 'Registrarme'}
+              </button>
+            </form>
+            <button onClick={() => { setIsLoginMode(!isLoginMode); setAuthError(''); }} style={{ width: '100%', marginTop: '20px', background: 'transparent', border: 'none', color: '#666', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}>
+              {isLoginMode ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Inicia sesión'}
+            </button>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  // 2. SI HAY USUARIO PERO NO TIENE CASA (Pantalla de "Sala de Espera")
+  if (currentUser && !houseId) {
+    return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f2f5', fontFamily: 'system-ui, -apple-system, sans-serif', padding: '20px' }}>
         <div style={{ backgroundColor: 'white', padding: '40px 30px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', width: '100%', maxWidth: '350px', animation: 'fadeIn 0.5s ease' }}>
-          <h1 style={{ margin: '0 0 25px 0', textAlign: 'center', fontSize: '28px', color: '#1a1a1a', fontWeight: '800' }}>
-            {isLoginMode ? '¡Hola de nuevo! 👋' : 'Unirse a la Casa 🏠'}
-          </h1>
-          {authError && (
-            <div style={{ backgroundColor: '#fff0f0', color: '#ff4d4f', padding: '12px', borderRadius: '12px', marginBottom: '20px', fontSize: '14px', textAlign: 'center', fontWeight: 'bold' }}>
-              {authError}
-            </div>
-          )}
-          <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            {!isLoginMode && (
-              <>
-                <input type="text" placeholder="Tu Nombre (ej: Mamá)" value={authName} onChange={e => setAuthName(e.target.value)} required style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa' }} />
-                <input type="text" placeholder="Código de Invitación (opcional)" value={authInviteCode} onChange={e => setAuthInviteCode(e.target.value)} style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa' }} />
-              </>
-            )}
-            <input type="email" placeholder="Correo electrónico" value={authEmail} onChange={e => setAuthEmail(e.target.value)} required style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa' }} />
-            <input type="password" placeholder="Contraseña" value={authPassword} onChange={e => setAuthPassword(e.target.value)} required style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa' }} />
-            <button type="submit" style={{ padding: '16px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)', color: 'white', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px', boxShadow: '0 4px 15px rgba(0,123,255,0.3)' }}>
-              {isLoginMode ? 'Entrar' : 'Crear mi cuenta'}
-            </button>
-          </form>
-          <button 
-            onClick={() => { setIsLoginMode(!isLoginMode); setAuthError(''); }} 
-            style={{ width: '100%', marginTop: '20px', background: 'transparent', border: 'none', color: '#666', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            {isLoginMode ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Inicia sesión'}
+          <h1 style={{ margin: '0 0 10px 0', textAlign: 'center', fontSize: '24px', color: '#1a1a1a', fontWeight: '800' }}>¡Hola, {currentUser}!</h1>
+          <p style={{ textAlign: 'center', color: '#666', marginBottom: '25px', fontSize: '15px' }}>Para empezar, necesitas unirte a una casa o crear una nueva.</p>
+
+          <div style={{ display: 'flex', backgroundColor: '#f0f2f5', borderRadius: '12px', padding: '4px', marginBottom: '20px' }}>
+            <button onClick={() => setAddHouseMode('crear')} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: addHouseMode === 'crear' ? 'white' : 'transparent', color: addHouseMode === 'crear' ? '#007bff' : '#666', fontWeight: 'bold', cursor: 'pointer', boxShadow: addHouseMode === 'crear' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.2s' }}>Crear nueva</button>
+            <button onClick={() => setAddHouseMode('unirse')} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: addHouseMode === 'unirse' ? 'white' : 'transparent', color: addHouseMode === 'unirse' ? '#007bff' : '#666', fontWeight: 'bold', cursor: 'pointer', boxShadow: addHouseMode === 'unirse' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.2s' }}>Unirse</button>
+          </div>
+
+          <input 
+            type="text" 
+            placeholder={addHouseMode === 'crear' ? "Nombre de la casa..." : "Código de invitación..."} 
+            value={newHouseInput} 
+            onChange={(e) => setNewHouseInput(e.target.value)} 
+            style={{ width: '100%', boxSizing: 'border-box', padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa', color: '#333' }} 
+          />
+
+          <button onClick={procesarAñadirCasa} style={{ width: '100%', padding: '16px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)', color: 'white', fontWeight: 'bold', fontSize: '16px', marginTop: '20px', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,123,255,0.3)' }}>
+            {addHouseMode === 'crear' ? 'Crear Casa' : 'Unirme a la Casa'}
+          </button>
+          
+          <button onClick={() => { localStorage.clear(); window.location.reload(); }} style={{ width: '100%', marginTop: '20px', background: 'transparent', border: 'none', color: '#ff4d4f', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}>
+            Cerrar sesión
           </button>
         </div>
       </div>
-      </>
     )
   }
   
