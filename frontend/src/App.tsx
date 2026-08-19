@@ -823,11 +823,48 @@ useEffect(() => {
         {/* --- PANTALLA LISTA DE LA COMPRA --- */}
         {activeSupermarket && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
               {houseLists.length > 1 && (
                 <button onClick={() => setActiveSupermarket(null)} style={{ WebkitAppearance: 'none', padding: '10px 14px', fontSize: '16px', cursor: 'pointer', borderRadius: '14px', border: 'none', backgroundColor: 'rgba(0,0,0,0.05)', color: '#444', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>⬅️</button>
               )}
-              <h1 style={{ margin: 0, textTransform: 'capitalize', fontSize: '22px', fontWeight: '800', color: '#1a1a1a', flex: 1, textAlign: 'center', paddingRight: '40px' }}>{activeSupermarket}</h1>
+              <h1 style={{ margin: 0, textTransform: 'capitalize', fontSize: '22px', fontWeight: '800', color: '#1a1a1a', flex: 1, textAlign: houseLists.length > 1 ? 'center' : 'left' }}>{activeSupermarket}</h1>
+              
+              <button 
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                style={{ background: '#f0f2f5', border: 'none', padding: '8px 16px', borderRadius: '12px', cursor: 'pointer', fontSize: '22px', fontWeight: 'bold', color: '#333' }}
+              >
+                ⋮
+              </button>
+
+              {/* --- MENÚ DESPLEGABLE EN LA LISTA --- */}
+              {isMenuOpen && (
+                <div style={{ position: 'absolute', top: '75px', right: '20px', background: 'white', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', borderRadius: '16px', padding: '15px', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '12px', width: '230px', border: '1px solid #eee', animation: 'fadeIn 0.2s ease-in-out' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', color: '#999', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Cambiar de casa</label>
+                    <select 
+                      value={houseId || ''} 
+                      onChange={(e) => {
+                        const nuevaCasaId = e.target.value;
+                        setHouseId(nuevaCasaId);
+                        localStorage.setItem('houseId', nuevaCasaId);
+                        socket.emit('joinHouse', nuevaCasaId);
+                        setIsMenuOpen(false);
+                      }}
+                      style={{ padding: '10px', fontSize: '14px', borderRadius: '10px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', outline: 'none', color: '#333', fontWeight: 'bold' }}
+                    >
+                      {userHouses.map(casa => <option key={casa.id} value={casa.id}>{casa.name}</option>)}
+                    </select>
+                    <button onClick={() => { setIsMenuOpen(false); setIsAddListModalOpen(true); }} style={{ background: 'transparent', border: 'none', padding: '8px 0', textAlign: 'left', cursor: 'pointer', fontSize: '15px', fontWeight: '600', color: '#28a745', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      ➕ Añadir Supermercado
+                    </button>
+                  </div>
+                  <hr style={{ width: '100%', border: 'none', borderTop: '1px solid #f0f2f5', margin: '5px 0' }} />
+                  <button onClick={() => { setIsMenuOpen(false); compartirCasa(); }} style={{ background: 'transparent', border: 'none', padding: '8px 0', textAlign: 'left', cursor: 'pointer', fontSize: '15px', fontWeight: '600', color: '#007bff', display: 'flex', gap: '10px', alignItems: 'center' }}>🔗 Compartir invitación</button>
+                  <button onClick={() => { setIsMenuOpen(false); abrirAdministracion(); }} style={{ background: 'transparent', border: 'none', padding: '8px 0', textAlign: 'left', cursor: 'pointer', fontSize: '15px', fontWeight: '600', color: '#333', display: 'flex', gap: '10px', alignItems: 'center' }}>⚙️ Administrar Casa</button>
+                  <button onClick={() => { setIsMenuOpen(false); setIsSuggestionOpen(true); }} style={{ background: 'transparent', border: 'none', padding: '8px 0', textAlign: 'left', cursor: 'pointer', fontSize: '15px', fontWeight: '600', color: '#333', display: 'flex', gap: '10px', alignItems: 'center' }}>💡 Enviar sugerencia</button>
+                  <button onClick={() => { socket.disconnect(); localStorage.clear(); setCurrentUser(null); setCurrentUserId(null); setHouseId(null); setUserHouses([]); }} style={{ background: '#fff0f0', border: 'none', padding: '10px', borderRadius: '10px', textAlign: 'center', cursor: 'pointer', color: '#ff4d4f', fontWeight: 'bold', fontSize: '15px', marginTop: '5px' }}>🚪 Cerrar sesión</button>
+                </div>
+              )}
             </div>
             
             <form onSubmit={handleAddItem} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '35px', backgroundColor: 'white', padding: '20px', borderRadius: '24px', boxShadow: '0 8px 25px rgba(0,0,0,0.05)' }}>
