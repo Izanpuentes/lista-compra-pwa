@@ -80,21 +80,13 @@ function App() {
   const [authName, setAuthName] = useState('');
   const [authError, setAuthError] = useState('');
   
-  const [houseLists, setHouseLists] = useState<string[]>(['Mi Compra']);
-
-  const añadirLista = () => {
-    const nombre = window.prompt("Nombre de la nueva lista o supermercado:");
-    if (nombre && nombre.trim()) {
-      socket.emit('addList', { houseId, listName: nombre.trim() });
-    }
-  };
-
-  const eliminarLista = (lista: string) => {
-    if (window.confirm(`¿Seguro que quieres borrar la lista "${lista}" y todos sus productos?`)) {
-      socket.emit('deleteList', { houseId, listName: lista });
-      if (activeSupermarket === lista) setActiveSupermarket(null);
-    }
-  };
+  interface CustomList { nombre: string; icono: string; color: string; }
+  const [houseLists, setHouseLists] = useState<CustomList[]>([{ nombre: 'Mi Compra', icono: '🛒', color: '#e0f0ff' }]);
+  
+  const [isAddListModalOpen, setIsAddListModalOpen] = useState(false);
+  const [newListName, setNewListName] = useState('');
+  const [newListEmoji, setNewListEmoji] = useState('🛒');
+  const [newListColor, setNewListColor] = useState('#e0f0ff');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -370,6 +362,13 @@ function App() {
     }
   }, [houseId]);
 
+useEffect(() => {
+    // Si solo hay una lista y no hemos abierto ninguna, ¡ábrela directamente!
+    if (houseLists.length === 1 && !activeSupermarket) {
+      setActiveSupermarket(houseLists[0].nombre);
+    }
+  }, [houseLists, activeSupermarket]);
+
   const toggleListening = () => {
     if (isListening) {
       if (recognitionRef.current) recognitionRef.current.stop();
@@ -499,12 +498,9 @@ function App() {
   }
 
   const getBackgroundColor = () => {
-    if (activeSupermarket === 'aldi') return '#e0f0ff';
-    if (activeSupermarket === 'mercadona') return '#e6faec';
-    if (activeSupermarket === 'lidl') return '#fffde6';
-    if (activeSupermarket === 'costco') return '#ffe6e6';
-    if (activeSupermarket === 'medina 3') return '#f3e5f5';
-    return '#ffffff';
+    if (!activeSupermarket) return '#f0f2f5'; 
+    const listaActiva = houseLists.find(l => l.nombre === activeSupermarket);
+    return listaActiva ? listaActiva.color : '#ffffff';
   }
 
   // --- FUNCIONES DE ADMINISTRACIÓN ---
@@ -767,6 +763,9 @@ function App() {
                         <option key={casa.id} value={casa.id}>{casa.name}</option>
                       ))}
                     </select>
+                    <button onClick={() => { setIsMenuOpen(false); setIsAddListModalOpen(true); }} style={{ background: 'transparent', border: 'none', padding: '8px 0', textAlign: 'left', cursor: 'pointer', fontSize: '15px', fontWeight: '600', color: '#28a745', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      ➕ Añadir Supermercado
+                    </button>
                   </div>
 
                   <hr style={{ width: '100%', border: 'none', borderTop: '1px solid #f0f2f5', margin: '5px 0' }} />
@@ -805,21 +804,19 @@ function App() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              {houseLists.map(lista => (
-                <div key={lista} style={{ position: 'relative', display: 'flex' }}>
-                  <button onClick={() => setActiveSupermarket(lista)} style={{ width: '100%', WebkitAppearance: 'none', padding: '30px 10px', fontSize: '18px', background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)', color: 'white', border: 'none', borderRadius: '24px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', boxShadow: '0 10px 20px rgba(0,123,255,0.25)', transition: 'transform 0.1s' }}>
-                    <span style={{ fontSize: '34px', background: 'rgba(255,255,255,0.15)', padding: '16px', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</span>
-                    {lista}
-                  </button>
-                  <button onClick={() => eliminarLista(lista)} style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#ff4d4f', color: 'white', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>✕</button>
-                </div>
-              ))}
-              
-              <button onClick={añadirLista} style={{ width: '100%', WebkitAppearance: 'none', padding: '30px 10px', fontSize: '18px', background: '#f8f9fa', color: '#888', border: '3px dashed #ddd', borderRadius: '24px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', transition: 'all 0.2s' }}>
-                <span style={{ fontSize: '34px', opacity: 0.5 }}>➕</span>
-                Nueva Lista
-              </button>
-            </div>
+    {houseLists.map(lista => (
+      <div key={lista.nombre} style={{ position: 'relative', display: 'flex' }}>
+        <button onClick={() => setActiveSupermarket(lista.nombre)} style={{ width: '100%', WebkitAppearance: 'none', padding: '30px 10px', fontSize: '18px', background: lista.color, color: '#1a1a1a', border: 'none', borderRadius: '24px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', boxShadow: '0 8px 15px rgba(0,0,0,0.1)', transition: 'transform 0.1s' }}>
+          <span style={{ fontSize: '34px', background: 'rgba(255,255,255,0.4)', padding: '16px', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>{lista.icono}</span>
+          {lista.nombre}
+        </button>
+        <button onClick={() => { if (window.confirm(`¿Borrar la lista ${lista.nombre} y sus productos?`)) socket.emit('deleteList', { houseId, listName: lista.nombre }); }} style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#ff4d4f', color: 'white', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>✕</button>
+      </div>
+    ))}
+    <button onClick={() => setIsAddListModalOpen(true)} style={{ width: '100%', padding: '30px 10px', fontSize: '18px', background: '#f8f9fa', color: '#888', border: '3px dashed #ddd', borderRadius: '24px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
+      <span style={{ fontSize: '34px', opacity: 0.5 }}>➕</span> Nueva Lista
+    </button>
+  </div>
           </div>
         )}
 
@@ -827,7 +824,9 @@ function App() {
         {activeSupermarket && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px', backgroundColor: 'white', padding: '15px 20px', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-              <button onClick={() => setActiveSupermarket(null)} style={{ WebkitAppearance: 'none', padding: '10px 14px', fontSize: '16px', cursor: 'pointer', borderRadius: '14px', border: 'none', backgroundColor: '#f0f2f5', color: '#444', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>⬅️</button>
+              {houseLists.length > 1 && (
+                <button onClick={() => setActiveSupermarket(null)} style={{ WebkitAppearance: 'none', padding: '10px 14px', fontSize: '16px', cursor: 'pointer', borderRadius: '14px', border: 'none', backgroundColor: 'rgba(0,0,0,0.05)', color: '#444', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>⬅️</button>
+              )}
               <h1 style={{ margin: 0, textTransform: 'capitalize', fontSize: '22px', fontWeight: '800', color: '#1a1a1a', flex: 1, textAlign: 'center', paddingRight: '40px' }}>{activeSupermarket}</h1>
             </div>
             
@@ -1239,6 +1238,39 @@ function App() {
             </div>
           </div>
         )}
+
+        {/* --- MODAL AÑADIR LISTA PERSONALIZADA --- */}
+  {isAddListModalOpen && (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1500 }}>
+      <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '24px', width: '90%', maxWidth: '350px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+        <h3 style={{ margin: 0, textAlign: 'center', color: '#1a1a1a', fontSize: '22px', fontWeight: '800' }}>Nuevo Supermercado</h3>
+        
+        <label style={{ fontSize: '14px', fontWeight: 'bold', color: '#555' }}>Nombre:</label>
+        <input type="text" placeholder="Ej: Carrefour" value={newListName} onChange={(e) => setNewListName(e.target.value)} style={{ padding: '14px', borderRadius: '14px', border: '2px solid #eee', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa' }} />
+
+        <div style={{ display: 'flex', gap: '15px' }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: '14px', fontWeight: 'bold', color: '#555', display: 'block', marginBottom: '8px' }}>Icono (Emoji):</label>
+            <input type="text" value={newListEmoji} onChange={(e) => setNewListEmoji(e.target.value)} maxLength={2} style={{ width: '100%', boxSizing: 'border-box', padding: '14px', borderRadius: '14px', border: '2px solid #eee', fontSize: '24px', textAlign: 'center', outline: 'none', backgroundColor: '#f8f9fa' }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: '14px', fontWeight: 'bold', color: '#555', display: 'block', marginBottom: '8px' }}>Color:</label>
+            <input type="color" value={newListColor} onChange={(e) => setNewListColor(e.target.value)} style={{ width: '100%', height: '58px', borderRadius: '14px', border: 'none', padding: '0', cursor: 'pointer' }} />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+          <button onClick={() => setIsAddListModalOpen(false)} style={{ flex: 1, padding: '14px', borderRadius: '14px', border: 'none', cursor: 'pointer', backgroundColor: '#f0f2f5', color: '#444', fontWeight: 'bold' }}>Cancelar</button>
+          <button onClick={() => {
+            if (newListName.trim()) {
+              socket.emit('addList', { houseId, newList: { nombre: newListName.trim(), icono: newListEmoji, color: newListColor } });
+              setIsAddListModalOpen(false); setNewListName(''); setNewListEmoji('🛒'); setNewListColor('#e0f0ff');
+            }
+          }} style={{ flex: 1, padding: '14px', borderRadius: '14px', border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #28a745 0%, #208838 100%)', color: 'white', fontWeight: 'bold' }}>Guardar</button>
+        </div>
+      </div>
+    </div>
+  )}
 
       </div>
     </div>

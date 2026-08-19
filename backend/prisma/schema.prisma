@@ -13,7 +13,7 @@ model House {
   name        String
   inviteCode  String   @unique
   adminId     String
-  listas      String[] @default(["Compra"])
+  listas      Json     @default("[{\"nombre\": \"Mi Compra\", \"icono\": \"🛒\", \"color\": \"#e0f0ff\"}]")
   users       User[]   
   items       Item[]
   menuSemanal Json?    

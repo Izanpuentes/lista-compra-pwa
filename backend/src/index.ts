@@ -938,13 +938,18 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('addList', async ({ houseId, listName }) => {
+  socket.on('addList', async ({ houseId, newList }) => {
     try {
       const casa = await prisma.house.findUnique({ where: { id: houseId } });
-      if (casa && !casa.listas.includes(listName)) {
-        const nuevasListas = [...casa.listas, listName];
-        await prisma.house.update({ where: { id: houseId }, data: { listas: nuevasListas } });
-        io.to(houseId).emit('listasUpdated', nuevasListas);
+      if (casa) {
+        // Transformamos por si hay datos antiguos y añadimos la nueva
+        const listasActuales = Array.isArray(casa.listas) ? casa.listas.map((l: any) => typeof l === 'string' ? { nombre: l, icono: '🛒', color: '#e0f0ff' } : l) : [];
+        
+        if (!listasActuales.some(l => l.nombre === newList.nombre)) {
+          const nuevasListas = [...listasActuales, newList];
+          await prisma.house.update({ where: { id: houseId }, data: { listas: nuevasListas } });
+          io.to(houseId).emit('listasUpdated', nuevasListas);
+        }
       }
     } catch (error) { console.error(error); }
   });
@@ -953,9 +958,11 @@ io.on('connection', (socket) => {
     try {
       const casa = await prisma.house.findUnique({ where: { id: houseId } });
       if (casa) {
-        const nuevasListas = casa.listas.filter(l => l !== listName);
+        const listasActuales = Array.isArray(casa.listas) ? casa.listas.map((l: any) => typeof l === 'string' ? { nombre: l, icono: '🛒', color: '#e0f0ff' } : l) : [];
+        const nuevasListas = listasActuales.filter(l => l.nombre !== listName);
+        
         await prisma.house.update({ where: { id: houseId }, data: { listas: nuevasListas } });
-        await prisma.item.deleteMany({ where: { houseId, supermercado: listName } }); // Borramos sus productos
+        await prisma.item.deleteMany({ where: { houseId, supermercado: listName } });
         io.to(houseId).emit('listasUpdated', nuevasListas);
       }
     } catch (error) { console.error(error); }
