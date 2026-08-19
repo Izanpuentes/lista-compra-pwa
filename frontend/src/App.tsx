@@ -78,15 +78,15 @@ function App() {
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authName, setAuthName] = useState('');
-  const [authInviteCode, setAuthInviteCode] = useState('');
   const [authError, setAuthError] = useState('');
   
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const invite = params.get('invite');
     if (invite) {
-      setAuthInviteCode(invite);
-      setIsLoginMode(false);
+      setNewHouseInput(invite);  // Pre-rellenamos el input de la sala de espera
+      setAddHouseMode('unirse'); // Dejamos marcada la opción de "Unirse"
+      setIsLoginMode(false);     // Mostramos la pantalla de registro
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
