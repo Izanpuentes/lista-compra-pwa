@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
+import 'dotenv/config';
 
 const prisma = new PrismaClient();
 

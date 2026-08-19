@@ -611,6 +611,15 @@ function App() {
 
   if (!currentUser || !houseId) {
     return (
+      <>
+        {/* --- FIX GLOBAL PARA EL MODO OSCURO (LOGIN) --- */}
+        <style>{`
+          :root { color-scheme: light; }
+          body { color: #1a1a1a; }
+          input, textarea, select { color: #1a1a1a !important; color-scheme: light; }
+          ::placeholder { color: #999 !important; opacity: 1; }
+        `}</style>
+
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f2f5', fontFamily: 'system-ui, -apple-system, sans-serif', padding: '20px' }}>
         <div style={{ backgroundColor: 'white', padding: '40px 30px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', width: '100%', maxWidth: '350px', animation: 'fadeIn 0.5s ease' }}>
           <h1 style={{ margin: '0 0 25px 0', textAlign: 'center', fontSize: '28px', color: '#1a1a1a', fontWeight: '800' }}>
@@ -642,8 +651,10 @@ function App() {
           </button>
         </div>
       </div>
+      </>
     )
   }
+  
 
   const filteredItems = items.filter(item => item.supermercado === activeSupermarket);
   const categoriasAUsar = activeSupermarket === 'mercadona' ? ORDEN_MERCADONA : RUTAS_SUPERMERCADO;
