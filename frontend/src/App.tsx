@@ -122,15 +122,23 @@ function App() {
   }, []);
 
   const handleInstallClick = async () => {
-    if (deviceOS === 'android' && deferredPrompt) {
-      // Abre el cartel nativo de Android
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') setDeferredPrompt(null);
-    } else if (deviceOS === 'ios') {
-      // Muestra nuestras instrucciones personalizadas para iPhone
+    if (deviceOS === 'ios') {
+      // Si es iPhone/iPad, mostramos el cartelito de abajo
       setShowIosTooltip(true);
+      
+    } else if (deviceOS === 'android') {
+      // Si es Android y el botón mágico de Google está listo
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') setDeferredPrompt(null);
+      } else {
+        // Si es Android pero el botón mágico falla o la app no tiene manifest.json aún
+        alert("Abre el menú de tu navegador (los 3 puntitos arriba a la derecha) y pulsa en 'Añadir a la pantalla de inicio' o 'Instalar aplicación'.");
+      }
+      
     } else {
+      // Solo si de verdad es un ordenador
       alert("Para instalar la app en el ordenador, pulsa el icono de instalación en la barra de direcciones del navegador.");
     }
   };

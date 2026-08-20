@@ -1,0 +1,21 @@
+{
+  "name": "Nuestra Lista de la Compra",
+  "short_name": "Tus Listas",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f0f2f5",
+  "theme_color": "#ffffff",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icono-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icono-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
