@@ -88,6 +88,53 @@ function App() {
   const [newListEmoji, setNewListEmoji] = useState('🛒');
   const [newListColor, setNewListColor] = useState('#e0f0ff');
 
+  // --- ESTADOS DE INSTALACIÓN PWA ---
+  const [isInstalled, setIsInstalled] = useState(true); // Asumimos true para que no parpadee
+  const [deviceOS, setDeviceOS] = useState<'android' | 'ios' | 'desktop'>('desktop');
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showIosTooltip, setShowIosTooltip] = useState(false);
+
+  useEffect(() => {
+    // 1. Detectar si YA está instalada
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    setIsInstalled(isStandalone);
+
+    // 2. Detectar el Sistema Operativo
+    const ua = window.navigator.userAgent;
+    if (/iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream) {
+      setDeviceOS('ios');
+    } else if (/android/i.test(ua)) {
+      setDeviceOS('android');
+    }
+
+    // 3. Capturar el evento de instalación nativo (Solo Android)
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    
+    // Escuchar si la instalan en este momento para esconder el botón
+    window.addEventListener('appinstalled', () => setIsInstalled(true));
+
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deviceOS === 'android' && deferredPrompt) {
+      // Abre el cartel nativo de Android
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') setDeferredPrompt(null);
+    } else if (deviceOS === 'ios') {
+      // Muestra nuestras instrucciones personalizadas para iPhone
+      setShowIosTooltip(true);
+    } else {
+      alert("Para instalar la app en el ordenador, pulsa el icono de instalación en la barra de direcciones del navegador.");
+    }
+  };
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const invite = params.get('invite');
@@ -660,6 +707,16 @@ useEffect(() => {
             {authError && (
               <div style={{ backgroundColor: '#fff0f0', color: '#ff4d4f', padding: '12px', borderRadius: '12px', marginBottom: '20px', fontSize: '14px', textAlign: 'center', fontWeight: 'bold' }}>{authError}</div>
             )}
+            {!isInstalled && (
+              <button 
+                type="button" 
+                onClick={handleInstallClick} 
+                style={{ width: '100%', marginBottom: '20px', padding: '14px', borderRadius: '16px', border: '2px dashed #007bff', background: '#e0f0ff', color: '#007bff', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: '10px' }}
+              >
+                📲 Instalar Aplicación
+              </button>
+            )}
+            <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}></form>
             <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               {!isLoginMode && (
                 <input type="text" placeholder="Tu Nombre (ej: Mamá)" value={authName} onChange={e => setAuthName(e.target.value)} required style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa' }} />
@@ -792,6 +849,15 @@ useEffect(() => {
                   <button onClick={() => { setIsMenuOpen(false); compartirCasa(); }} style={{ background: 'transparent', border: 'none', padding: '8px 0', textAlign: 'left', cursor: 'pointer', fontSize: '15px', fontWeight: '600', color: '#007bff', display: 'flex', gap: '10px', alignItems: 'center' }}>
                     🔗 Compartir invitación
                   </button>
+
+                  {!isInstalled && (
+                    <>
+                      <button onClick={() => { setIsMenuOpen(false); handleInstallClick(); }} style={{ background: 'transparent', border: 'none', padding: '8px 0', textAlign: 'left', cursor: 'pointer', fontSize: '15px', fontWeight: '600', color: '#ff9800', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        📲 Instalar App
+                      </button>
+                      <hr style={{ width: '100%', border: 'none', borderTop: '1px solid #f0f2f5', margin: '5px 0' }} />
+                    </>
+                  )}
 
                   {/* Administrar Casa */}
                   <button onClick={() => { setIsMenuOpen(false); abrirAdministracion(); }} style={{ background: 'transparent', border: 'none', padding: '8px 0', textAlign: 'left', cursor: 'pointer', fontSize: '15px', fontWeight: '600', color: '#333', display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -945,6 +1011,15 @@ useEffect(() => {
           </button>
           
         </div>
+
+        {/* --- INSTRUCCIONES IOS --- */}
+        {showIosTooltip && (
+          <div style={{ position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)', backgroundColor: 'rgba(0,0,0,0.85)', color: 'white', padding: '15px 20px', borderRadius: '16px', width: '85%', maxWidth: '350px', zIndex: 9999, textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', animation: 'fadeIn 0.3s ease' }}>
+            <p style={{ margin: '0 0 10px 0', fontSize: '15px', lineHeight: '1.4' }}>Para instalar la app, pulsa el icono de <strong>Compartir</strong> en la barra de Safari y selecciona <strong>"Añadir a la pantalla de inicio"</strong>.</p>
+            <button onClick={() => setShowIosTooltip(false)} style={{ background: 'white', color: 'black', border: 'none', padding: '8px 20px', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}>Entendido</button>
+            <div style={{ width: 0, height: 0, borderLeft: '10px solid transparent', borderRight: '10px solid transparent', borderTop: '10px solid rgba(0,0,0,0.85)', margin: '10px auto -20px auto' }}></div>
+          </div>
+        )}
 
         {/* --- MODAL SUGERENCIAS --- */}
         {isSuggestionOpen && (
