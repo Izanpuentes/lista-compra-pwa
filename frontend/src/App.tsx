@@ -1316,13 +1316,20 @@ useEffect(() => {
                   {recetasSeleccionadas.length === 1 ? `"${recetasSeleccionadas[0].nombre}"` : `estas ${recetasSeleccionadas.length} recetas`}
                 </span>?
               </h3>
+              
+              {/* CUADRÍCULA DINÁMICA DE SUPERMERCADOS */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '10px' }}>
-                <button onClick={() => procesarAñadirRecetasSeleccionadas('aldi')} style={{ WebkitAppearance: 'none', padding: '20px 10px', fontSize: '16px', background: 'linear-gradient(135deg, #005b9f 0%, #003f75 100%)', color: 'white', border: 'none', borderRadius: '16px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0,91,159,0.2)' }}>Aldi</button>
-                <button onClick={() => procesarAñadirRecetasSeleccionadas('mercadona')} style={{ WebkitAppearance: 'none', padding: '20px 10px', fontSize: '16px', background: 'linear-gradient(135deg, #00824b 0%, #005c35 100%)', color: 'white', border: 'none', borderRadius: '16px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0,130,75,0.2)' }}>Mercadona</button>
-                <button onClick={() => procesarAñadirRecetasSeleccionadas('lidl')} style={{ WebkitAppearance: 'none', padding: '20px 10px', fontSize: '16px', background: 'linear-gradient(135deg, #ffd700 0%, #f0b400 100%)', color: '#003f75', border: 'none', borderRadius: '16px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(255,215,0,0.2)' }}>Lidl</button>
-                <button onClick={() => procesarAñadirRecetasSeleccionadas('costco')} style={{ WebkitAppearance: 'none', padding: '20px 10px', fontSize: '16px', background: 'linear-gradient(135deg, #e31837 0%, #a61027 100%)', color: 'white', border: 'none', borderRadius: '16px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(227,24,55,0.2)' }}>Costco</button>
-                <button onClick={() => procesarAñadirRecetasSeleccionadas('medina 3')} style={{ WebkitAppearance: 'none', padding: '20px 10px', fontSize: '16px', background: 'linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%)', color: 'white', border: 'none', borderRadius: '16px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(156,39,176,0.2)' }}>Medina 3</button>
+                {houseLists.map(lista => (
+                  <button 
+                    key={lista.nombre}
+                    onClick={() => procesarAñadirRecetasSeleccionadas(lista.nombre)} 
+                    style={{ WebkitAppearance: 'none', padding: '15px 10px', fontSize: '15px', background: lista.color, color: '#1a1a1a', border: 'none', borderRadius: '16px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <span>{lista.icono}</span> {lista.nombre}
+                  </button>
+                ))}
               </div>
+
               <button onClick={() => setIsSupermarketModalOpen(false)} style={{ WebkitAppearance: 'none', padding: '15px', marginTop: '10px', borderRadius: '16px', border: 'none', cursor: 'pointer', backgroundColor: '#f0f2f5', color: '#444', fontWeight: 'bold', fontSize: '16px' }}>Cancelar</button>
             </div>
           </div>
