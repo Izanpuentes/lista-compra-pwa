@@ -79,6 +79,11 @@ function App() {
   const [authPassword, setAuthPassword] = useState('');
   const [authName, setAuthName] = useState('');
   const [authError, setAuthError] = useState('');
+  // --- ESTADOS PARA RECUPERAR CONTRASEÑA ---
+  const [isForgotPasswordMode, setIsForgotPasswordMode] = useState(false);
+  const [resetStep, setResetStep] = useState<1 | 2>(1);
+  const [resetCode, setResetCode] = useState('');
+  const [resetMessage, setResetMessage] = useState('');
   
   interface CustomList { nombre: string; icono: string; color: string; }
   const [houseLists, setHouseLists] = useState<CustomList[]>([{ nombre: 'Mi Compra', icono: '🛒', color: '#e0f0ff' }]);
@@ -194,6 +199,41 @@ function App() {
     } catch (error: any) {
       setAuthError(error.message);
     }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(''); setResetMessage('');
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: authEmail })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setResetMessage(data.mensaje);
+      setResetStep(2); // Pasamos al paso de meter el código
+    } catch (error: any) { setAuthError(error.message); }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(''); setResetMessage('');
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: authEmail, code: resetCode, newPassword: authPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      alert(data.mensaje);
+      setIsForgotPasswordMode(false); // Volvemos al login normal
+      setResetStep(1);
+      setAuthPassword('');
+      setResetCode('');
+    } catch (error: any) { setAuthError(error.message); }
   };
 
   const [items, setItems] = useState<ShoppingItem[]>([]);
@@ -697,6 +737,7 @@ useEffect(() => {
   };
 
   // 1. SI NO HAY USUARIO LOGUEADO (Pantalla pura de Login/Registro)
+  // 1. SI NO HAY USUARIO LOGUEADO (Pantalla pura de Login/Registro/Recuperación)
   if (!currentUser) {
     return (
       <>
@@ -709,35 +750,76 @@ useEffect(() => {
 
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f2f5', fontFamily: 'system-ui, -apple-system, sans-serif', padding: '20px' }}>
           <div style={{ backgroundColor: 'white', padding: '40px 30px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', width: '100%', maxWidth: '350px', animation: 'fadeIn 0.5s ease' }}>
-            <h1 style={{ margin: '0 0 25px 0', textAlign: 'center', fontSize: '28px', color: '#1a1a1a', fontWeight: '800' }}>
-              {isLoginMode ? '¡Hola de nuevo! 👋' : 'Crear Cuenta 👤'}
-            </h1>
-            {authError && (
-              <div style={{ backgroundColor: '#fff0f0', color: '#ff4d4f', padding: '12px', borderRadius: '12px', marginBottom: '20px', fontSize: '14px', textAlign: 'center', fontWeight: 'bold' }}>{authError}</div>
+            
+            {/* PANTALLA RECUPERAR CONTRASEÑA */}
+            {isForgotPasswordMode ? (
+              <>
+                <h1 style={{ margin: '0 0 25px 0', textAlign: 'center', fontSize: '24px', color: '#1a1a1a', fontWeight: '800' }}>Recuperar Contraseña 🔐</h1>
+                {authError && <div style={{ backgroundColor: '#fff0f0', color: '#ff4d4f', padding: '12px', borderRadius: '12px', marginBottom: '20px', fontSize: '14px', textAlign: 'center', fontWeight: 'bold' }}>{authError}</div>}
+                {resetMessage && <div style={{ backgroundColor: '#e6faec', color: '#28a745', padding: '12px', borderRadius: '12px', marginBottom: '20px', fontSize: '14px', textAlign: 'center', fontWeight: 'bold' }}>{resetMessage}</div>}
+                
+                {resetStep === 1 ? (
+                  <form onSubmit={handleForgotPassword} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <p style={{ color: '#666', fontSize: '14px', margin: '0 0 5px 0', textAlign: 'center' }}>Introduce tu correo y te enviaremos un código de 6 dígitos.</p>
+                    <input type="email" placeholder="Correo electrónico" value={authEmail} onChange={e => setAuthEmail(e.target.value)} required style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa' }} />
+                    <button type="submit" style={{ padding: '16px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)', color: 'white', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,123,255,0.3)' }}>Enviar código</button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <input type="text" placeholder="Código de 6 dígitos" value={resetCode} onChange={e => setResetCode(e.target.value)} required maxLength={6} style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa', textAlign: 'center', letterSpacing: '3px', fontWeight: 'bold' }} />
+                    <input type="password" placeholder="Nueva Contraseña" value={authPassword} onChange={e => setAuthPassword(e.target.value)} required style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa' }} />
+                    <button type="submit" style={{ padding: '16px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg, #28a745 0%, #208838 100%)', color: 'white', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(40,167,69,0.3)' }}>Cambiar Contraseña</button>
+                  </form>
+                )}
+                
+                <button onClick={() => { setIsForgotPasswordMode(false); setAuthError(''); setResetMessage(''); setResetStep(1); }} style={{ width: '100%', marginTop: '20px', background: 'transparent', border: 'none', color: '#666', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  Volver al inicio de sesión
+                </button>
+              </>
+            ) : (
+              
+              /* PANTALLA NORMAL DE LOGIN / REGISTRO */
+              <>
+                <h1 style={{ margin: '0 0 25px 0', textAlign: 'center', fontSize: '28px', color: '#1a1a1a', fontWeight: '800' }}>
+                  {isLoginMode ? '¡Hola de nuevo! 👋' : 'Crear Cuenta 👤'}
+                </h1>
+                {authError && (
+                  <div style={{ backgroundColor: '#fff0f0', color: '#ff4d4f', padding: '12px', borderRadius: '12px', marginBottom: '20px', fontSize: '14px', textAlign: 'center', fontWeight: 'bold' }}>{authError}</div>
+                )}
+                {!isInstalled && (
+                  <button 
+                    type="button" 
+                    onClick={handleInstallClick} 
+                    style={{ width: '100%', marginBottom: '20px', padding: '14px', borderRadius: '16px', border: '2px dashed #007bff', background: '#e0f0ff', color: '#007bff', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: '10px' }}
+                  >
+                    📲 Instalar Aplicación
+                  </button>
+                )}
+                
+                <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  {!isLoginMode && (
+                    <input type="text" placeholder="Tu Nombre (ej: Mamá)" value={authName} onChange={e => setAuthName(e.target.value)} required style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa' }} />
+                  )}
+                  <input type="email" placeholder="Correo electrónico" value={authEmail} onChange={e => setAuthEmail(e.target.value)} required style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa' }} />
+                  <input type="password" placeholder="Contraseña" value={authPassword} onChange={e => setAuthPassword(e.target.value)} required style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa' }} />
+                  
+                  {/* BOTÓN OLVIDÉ MI CONTRASEÑA */}
+                  {isLoginMode && (
+                    <button type="button" onClick={() => setIsForgotPasswordMode(true)} style={{ background: 'transparent', border: 'none', color: '#007bff', fontSize: '13px', textAlign: 'right', padding: '0', cursor: 'pointer', fontWeight: '600' }}>
+                      ¿Has olvidado tu contraseña?
+                    </button>
+                  )}
+
+                  <button type="submit" style={{ padding: '16px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)', color: 'white', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px', boxShadow: '0 4px 15px rgba(0,123,255,0.3)' }}>
+                    {isLoginMode ? 'Entrar' : 'Registrarme'}
+                  </button>
+                </form>
+                
+                <button onClick={() => { setIsLoginMode(!isLoginMode); setAuthError(''); }} style={{ width: '100%', marginTop: '20px', background: 'transparent', border: 'none', color: '#666', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  {isLoginMode ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Inicia sesión'}
+                </button>
+              </>
             )}
-            {!isInstalled && (
-              <button 
-                type="button" 
-                onClick={handleInstallClick} 
-                style={{ width: '100%', marginBottom: '20px', padding: '14px', borderRadius: '16px', border: '2px dashed #007bff', background: '#e0f0ff', color: '#007bff', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: '10px' }}
-              >
-                📲 Instalar Aplicación
-              </button>
-            )}
-            <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}></form>
-            <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {!isLoginMode && (
-                <input type="text" placeholder="Tu Nombre (ej: Mamá)" value={authName} onChange={e => setAuthName(e.target.value)} required style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa' }} />
-              )}
-              <input type="email" placeholder="Correo electrónico" value={authEmail} onChange={e => setAuthEmail(e.target.value)} required style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa' }} />
-              <input type="password" placeholder="Contraseña" value={authPassword} onChange={e => setAuthPassword(e.target.value)} required style={{ padding: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', fontSize: '16px', outline: 'none', backgroundColor: '#f8f9fa' }} />
-              <button type="submit" style={{ padding: '16px', borderRadius: '16px', border: 'none', background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)', color: 'white', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px', boxShadow: '0 4px 15px rgba(0,123,255,0.3)' }}>
-                {isLoginMode ? 'Entrar' : 'Registrarme'}
-              </button>
-            </form>
-            <button onClick={() => { setIsLoginMode(!isLoginMode); setAuthError(''); }} style={{ width: '100%', marginTop: '20px', background: 'transparent', border: 'none', color: '#666', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}>
-              {isLoginMode ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Inicia sesión'}
-            </button>
           </div>
         </div>
       </>

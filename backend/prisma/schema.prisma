@@ -30,6 +30,9 @@ model User {
   
   addedItems  Item[]   @relation("UserItems")
   createdAt   DateTime @default(now())
+
+  resetCode   String?
+  resetCodeExpiry DateTime?
 }
 
 model Item {

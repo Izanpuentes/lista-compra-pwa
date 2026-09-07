@@ -2,9 +2,11 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
+import { Resend } from 'resend';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Función auxiliar para generar un código único de 6 caracteres
 const generarCodigo = () => Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -90,6 +92,65 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error interno del servidor al iniciar sesión.' });
+  }
+});
+
+// --- RUTA 1: SOLICITAR CAMBIO DE CONTRASEÑA ---
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const usuario = await prisma.user.findUnique({ where: { email } });
+    
+    if (!usuario) {
+      return res.status(404).json({ error: 'No existe ninguna cuenta con ese correo.' });
+    }
+
+    // Generamos un código de 6 dígitos y le damos 15 minutos de vida
+    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiracion = new Date(Date.now() + 15 * 60 * 1000);
+
+    await prisma.user.update({
+      where: { email },
+      data: { resetCode: codigo, resetCodeExpiry: expiracion }
+    });
+
+    await resend.emails.send({
+      from: 'Lista de la Compra <onboarding@resend.dev>',
+      to: email,
+      subject: 'Recuperar contraseña - Lista de la Compra',
+      html: `<p>Hola ${usuario.name},</p><p>Tu código para cambiar la contraseña es: <strong style="font-size: 24px;">${codigo}</strong></p><p>Este código caduca en 15 minutos.</p>`
+    });
+
+    res.json({ mensaje: 'Código enviado. Revisa tu correo.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al solicitar el código.' });
+  }
+});
+
+// --- RUTA 2: ESTABLECER LA NUEVA CONTRASEÑA ---
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, code, newPassword } = req.body;
+    const usuario = await prisma.user.findUnique({ where: { email } });
+
+    if (!usuario || usuario.resetCode !== code || !usuario.resetCodeExpiry || usuario.resetCodeExpiry < new Date()) {
+      return res.status(400).json({ error: 'Código incorrecto o caducado.' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    // Actualizamos la contraseña y borramos el código temporal
+    await prisma.user.update({
+      where: { email },
+      data: { password: passwordHash, resetCode: null, resetCodeExpiry: null }
+    });
+
+    res.json({ mensaje: 'Contraseña actualizada con éxito. Ya puedes iniciar sesión.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al cambiar la contraseña.' });
   }
 });
 
