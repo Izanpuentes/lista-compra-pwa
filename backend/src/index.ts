@@ -7,13 +7,10 @@ import 'dotenv/config';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { Resend } from 'resend';
 import authRoutes from './auth.routes.js';
+import { enviarEmail } from './email.service.js';
 import { verificarToken, type AuthRequest } from './auth.middleware.js'; // o la ruta donde lo hayas guardado
 import jwt from 'jsonwebtoken';
-
-// Reemplazamos la configuración de nodemailer por la de Resend
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,9 +26,6 @@ const io = new Server(httpServer, {
 
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
-
-// --- CONFIGURACIÓN DE NODEMAILER ---
-
 
 app.use(cors());
 app.use(express.json());
@@ -983,28 +977,20 @@ io.on('connection', (socket) => {
 // Cuando el backend escucha el evento de sugerencia...
 // Cuando el backend escucha el evento de sugerencia...
 socket.on('sendSuggestion', async (data) => {
-  console.log("📩 ¡Sugerencia recibida en el servidor por RESEND!", data);
+  console.log("📩 ¡Sugerencia recibida en el servidor!", data);
 
   try {
-    const dataResend = await resend.emails.send({
-      from: 'Acme <onboarding@resend.dev>', 
-      to: 'izanpuentes@gmail.com', 
+    await enviarEmail({
+      to: 'izanpuentes@gmail.com',
       subject: `💡 Nueva sugerencia de ${data.creador}`,
+      html: `<p>${data.text}</p>`,
       text: data.text
     });
 
-    // Comprobamos si el compartimento 'error' trae algo
-    if (dataResend.error) {
-      console.error("❌ Resend ha devuelto un error:", dataResend.error);
-      return;
-    }
-
-    // Si no hay error, leemos el ID de dentro de 'data'
-    console.log("✅ Correo enviado con éxito por Resend. ID:", dataResend.data?.id);
+    console.log("✅ Correo de sugerencia enviado con éxito.");
 
   } catch (error) {
-    // Esto captura fallos de conexión o caídas del servidor
-    console.error("❌ ERROR CRÍTICO al conectar con Resend:", error);
+    console.error("❌ ERROR al enviar la sugerencia por email:", error);
   }
 });
 
