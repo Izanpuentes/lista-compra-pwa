@@ -203,37 +203,51 @@ function App() {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAuthError(''); setResetMessage('');
+    setAuthError(''); 
+    setResetMessage('');
+
     try {
       const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: authEmail })
+        body: JSON.stringify({ email: authEmail.trim().toLowerCase() })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      
       setResetMessage(data.mensaje);
       setResetStep(2); // Pasamos al paso de meter el código
-    } catch (error: any) { setAuthError(error.message); }
+    } catch (error: any) { 
+      setAuthError(error.message); 
+    }
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAuthError(''); setResetMessage('');
+    setAuthError(''); 
+    setResetMessage('');
+
     try {
       const res = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: authEmail, code: resetCode, newPassword: authPassword })
+        body: JSON.stringify({ 
+          email: authEmail.trim().toLowerCase(), 
+          code: resetCode.trim(), 
+          newPassword: authPassword 
+        })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      
       alert(data.mensaje);
       setIsForgotPasswordMode(false); // Volvemos al login normal
       setResetStep(1);
       setAuthPassword('');
       setResetCode('');
-    } catch (error: any) { setAuthError(error.message); }
+    } catch (error: any) { 
+      setAuthError(error.message); 
+    }
   };
 
   const [items, setItems] = useState<ShoppingItem[]>([]);
