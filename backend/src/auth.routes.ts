@@ -3,11 +3,22 @@ import 'dotenv/config';
 import bcrypt from 'bcrypt';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
 const router = express.Router();
 const prisma = new PrismaClient();
-const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Transportador de correo usando Gmail SMTP.
+// GMAIL_USER: tu cuenta de Gmail (ej. lista.compra.app@gmail.com)
+// GMAIL_APP_PASSWORD: la "contraseña de aplicación" de 16 caracteres generada en
+// https://myaccount.google.com/apppasswords (requiere verificación en 2 pasos activada)
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 
 // Función auxiliar para generar un código único de 6 caracteres
 const generarCodigo = () => Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -115,8 +126,8 @@ router.post('/forgot-password', async (req, res) => {
       data: { resetCode: codigo, resetCodeExpiry: expiracion }
     });
 
-    await resend.emails.send({
-      from: 'Lista de la Compra <onboarding@resend.dev>',
+    await transporter.sendMail({
+      from: `Lista de la Compra <${process.env.GMAIL_USER}>`,
       to: email,
       subject: 'Recuperar contraseña - Lista de la Compra',
       html: `<p>Hola ${usuario.name},</p><p>Tu código para cambiar la contraseña es: <strong style="font-size: 24px;">${codigo}</strong></p><p>Este código caduca en 15 minutos.</p>`
