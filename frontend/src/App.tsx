@@ -38,18 +38,6 @@ interface Receta {
 
 const socket = io({ autoConnect: false })
 
-const RUTAS_SUPERMERCADO = [
-  'Verduras y frutas', 'Carnes', 'Pescados', 'Desayuno', 'Fritos/Bolsas', 
-  'Pan', 'Leche', 'Alcohol', 'Lácteos y embutidos', 'Precocinados', 
-  'Enlatados', 'Chocolates y frutos secos', 'Higiene', 'Helados', 'Otros'
-];
-
-const ORDEN_MERCADONA = [
-  'Verduras y frutas', 'Precocinados', 'Enlatados', 'Pescados', 'Carnes', 
-  'Helados', 'Fritos/Bolsas', 'Lácteos y embutidos', 'Leche', 'Alcohol', 
-  'Desayuno', 'Pan', 'Chocolates y frutos secos', 'Higiene', 'Otros'
-];
-
 const obtenerProximos7Dias = () => {
   const dias = [];
   for (let i = 0; i < 7; i++) {
@@ -523,9 +511,22 @@ useEffect(() => {
 
       const productosDichos = transcript.split(/\s+y\s+|,/i).map((p: string) => p.trim()).filter((p: string) => p.length > 0);
       productosDichos.forEach((productoStr: string) => {
-        const categoriaDetectada = categorizarProducto(productoStr);
-        socket.emit('addItem', { name: productoStr, houseId, supermercado: activeSupermarket, categoria: categoriaDetectada, creador: currentUser });
-      });
+  const nombreNormalizado = productoStr.trim().toLowerCase();
+  const itemExistente = items.find(
+    item => item.supermercado === activeSupermarket && item.name.trim().toLowerCase() === nombreNormalizado
+  );
+
+  if (itemExistente) {
+    if (itemExistente.comprado) {
+      // Si existe pero está tachado, lo desmarcamos
+      socket.emit('toggle-item', { itemId: itemExistente.id, houseId, comprado: false });
+    }
+  } else {
+    // Si no existe, lo creamos
+    const categoriaDetectada = categorizarProducto(productoStr);
+    socket.emit('addItem', { name: productoStr, houseId, supermercado: activeSupermarket, categoria: categoriaDetectada, creador: currentUser });
+  }
+});
     };
     recognition.onerror = () => setIsListening(false);
     recognition.onend = () => setIsListening(false);
@@ -875,8 +876,7 @@ useEffect(() => {
   
 
   const filteredItems = items.filter(item => item.supermercado === activeSupermarket);
-  const categoriasAUsar = activeSupermarket === 'mercadona' ? ORDEN_MERCADONA : RUTAS_SUPERMERCADO;
-
+  
   return (
     <div style={{ minHeight: '100vh', backgroundColor: getBackgroundColor(), transition: 'background-color 0.4s ease', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       
@@ -1059,32 +1059,25 @@ useEffect(() => {
                 <input type="text" value={newItemName} onChange={handleNameChange} placeholder={`¿Qué falta en ${activeSupermarket}?`} style={{ flex: 1, padding: '16px', fontSize: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', WebkitAppearance: 'none', minWidth: 0, outline: 'none' }} />
                 <button type="button" onClick={toggleListening} style={{ WebkitAppearance: 'none', width: '56px', height: '56px', fontSize: '22px', cursor: 'pointer', backgroundColor: isListening ? '#ff4d4f' : '#f0f2f5', color: isListening ? 'white' : 'black', border: 'none', borderRadius: '16px', flexShrink: 0, transition: 'all 0.3s ease', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: isListening ? '0 4px 15px rgba(255,77,79,0.3)' : 'none' }}>{isListening ? '🔴' : '🎙️'}</button>
               </div>
-              <select value={newItemCategory} onChange={(e) => setNewItemCategory(e.target.value)} style={{ padding: '16px', fontSize: '16px', borderRadius: '16px', border: '2px solid #f0f2f5', backgroundColor: '#f8f9fa', WebkitAppearance: 'none', color: '#444', width: '100%', outline: 'none', fontWeight: '500' }}>
-                {categoriasAUsar.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-              </select>
               <button type="submit" style={{ WebkitAppearance: 'none', padding: '16px', fontSize: '16px', cursor: 'pointer', background: 'linear-gradient(135deg, #28a745 0%, #208838 100%)', color: 'white', border: 'none', borderRadius: '16px', fontWeight: 'bold', width: '100%', boxShadow: '0 6px 15px rgba(40,167,69,0.25)' }}>➕ Añadir al carrito</button>
             </form>
 
-            {categoriasAUsar.map(categoria => {
-              const itemsDeEstaCategoria = filteredItems.filter(item => !item.comprado && item.categoria === categoria);
-              if (itemsDeEstaCategoria.length === 0) return null; 
-              return (
-                <div key={categoria} style={{ marginBottom: '25px' }}>
-                  <h4 style={{ margin: '0 0 12px 10px', color: '#666', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>📍 {categoria}</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {itemsDeEstaCategoria.map(item => (
-                      <div key={item.id} onClick={() => toggleItem(item)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', backgroundColor: 'white', borderRadius: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', cursor: 'pointer' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1 }}>
-                          <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid #ddd', flexShrink: 0 }}></div>
-                          <span style={{ fontSize: '18px', color: '#222', fontWeight: '500' }}>{item.name} <span style={{ fontSize: '12px', color: '#888', marginLeft: '10px', backgroundColor: '#f0f2f5', padding: '4px 8px', borderRadius: '10px', fontWeight: 'normal' }}>{item.creador}</span></span>
-                        </div>
-                        <button onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }} style={{ WebkitAppearance: 'none', padding: '10px', background: '#fff0f0', color: '#ff4d4f', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🗑️</button>
-                      </div>
-                    ))}
+                        <div style={{ marginBottom: '25px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {filteredItems
+                  .filter(item => !item.comprado)
+                  .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }))
+                  .map(item => (
+                  <div key={item.id} onClick={() => toggleItem(item)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', backgroundColor: 'white', borderRadius: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1 }}>
+                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid #ddd', flexShrink: 0 }}></div>
+                      <span style={{ fontSize: '18px', color: '#222', fontWeight: '500' }}>{item.name} <span style={{ fontSize: '12px', color: '#888', marginLeft: '10px', backgroundColor: '#f0f2f5', padding: '4px 8px', borderRadius: '10px', fontWeight: 'normal' }}>{item.creador}</span></span>
+                    </div>
+                    <button onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }} style={{ WebkitAppearance: 'none', padding: '10px', background: '#fff0f0', color: '#ff4d4f', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🗑️</button>
                   </div>
-                </div>
-              )
-            })}
+                ))}
+              </div>
+            </div>
             
             <div style={{ marginTop: '40px' }}>
               <h4 style={{ margin: '0 0 12px 10px', color: '#999', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>❌ Frecuentes</h4>
