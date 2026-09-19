@@ -540,7 +540,7 @@ useEffect(() => {
 
   const procesarAñadirRecetasSeleccionadas = (supermercadoDestino: string) => {
     recetasSeleccionadas.forEach(receta => {
-      receta.ingredientes.forEach(ingrediente => {
+      receta.ingredientes.forEach((ingrediente: Ingrediente) => {
         const nombreNormalizado = ingrediente.nombre.trim().toLowerCase();
         const itemExistente = items.find(
           item => item.supermercado === supermercadoDestino && item.name.trim().toLowerCase() === nombreNormalizado
@@ -1082,7 +1082,10 @@ useEffect(() => {
             <div style={{ marginTop: '40px' }}>
               <h4 style={{ margin: '0 0 12px 10px', color: '#999', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>❌ Frecuentes</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {filteredItems.filter(item => item.comprado).map(item => (
+                {filteredItems
+                  .filter(item => item.comprado)
+                  .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }))
+                  .map(item => (
                   <div key={item.id} onClick={() => toggleItem(item)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: '20px', cursor: 'pointer' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1, opacity: 0.6 }}>
                       <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#ff4d4f', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontSize: '12px', flexShrink: 0 }}>❌</div>
