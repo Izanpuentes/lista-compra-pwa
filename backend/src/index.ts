@@ -939,7 +939,7 @@ io.on('connection', (socket) => {
     try {
       // Extraemos también el supermercado de los datos que envía React
       const { name, houseId, supermercado, categoria, creador } = data ?? {};
-      if (!puedeUsarCasa(houseId)) return;
+      if (!puedeUsarCasa(houseId) || !userId) return;
 
       const newItem = await prisma.item.create({
         data: { 
@@ -968,7 +968,7 @@ io.on('connection', (socket) => {
         // Transformamos por si hay datos antiguos y añadimos la nueva
         const listasActuales = Array.isArray(casa.listas) ? casa.listas.map((l: any) => typeof l === 'string' ? { nombre: l, icono: '🛒', color: '#e0f0ff' } : l) : [];
         
-        if (!listasActuales.some(l => l.nombre === newList.nombre)) {
+        if (!listasActuales.some((l: any) => l.nombre === newList.nombre)) {
           const nuevasListas = [...listasActuales, newList];
           await prisma.house.update({ where: { id: houseId }, data: { listas: nuevasListas } });
           io.to(houseId).emit('listasUpdated', nuevasListas);
@@ -983,7 +983,7 @@ io.on('connection', (socket) => {
       const casa = await prisma.house.findUnique({ where: { id: houseId } });
       if (casa) {
         const listasActuales = Array.isArray(casa.listas) ? casa.listas.map((l: any) => typeof l === 'string' ? { nombre: l, icono: '🛒', color: '#e0f0ff' } : l) : [];
-        const nuevasListas = listasActuales.filter(l => l.nombre !== listName);
+        const nuevasListas = listasActuales.filter((l: any) => l.nombre !== listName);
         
         await prisma.house.update({ where: { id: houseId }, data: { listas: nuevasListas } });
         await prisma.item.deleteMany({ where: { houseId, supermercado: listName } });
