@@ -272,6 +272,34 @@ function App() {
   }, [isMenuOpen]);
   
   const [currentUserId, setCurrentUserId] = useState<string | null>(localStorage.getItem('userId'));
+
+  // --- SESIÓN ---
+  const cerrarSesion = () => {
+    socket.disconnect();
+    localStorage.clear();
+    setCurrentUser(null);
+    setCurrentUserId(null);
+    setHouseId(null);
+    setUserHouses([]);
+  };
+
+  // Si el servidor ya no acepta el token (caducado o firmado con otra clave), volvemos al login
+  const sesionCaducada = () => {
+    if (!localStorage.getItem('token')) return; // ya se ha cerrado (evita avisos repetidos)
+    cerrarSesion();
+    alert('Tu sesión ha caducado. Vuelve a iniciar sesión.');
+  };
+
+  // fetch con el token de la sesión; si responde 401, cierra la sesión
+  const fetchConToken = async (url: string, options: RequestInit = {}) => {
+    const res = await fetch(url, {
+      ...options,
+      headers: { ...options.headers, 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    if (res.status === 401) sesionCaducada();
+    return res;
+  };
+
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [houseMembers, setHouseMembers] = useState<HouseMember[]>([]);
   const [houseAdminId, setHouseAdminId] = useState<string | null>(null);
@@ -422,11 +450,7 @@ function App() {
   useEffect(() => {
     if (!houseId) return;
 
-    fetch(`/api/houses/${houseId}/items`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    })
+    fetchConToken(`/api/houses/${houseId}/items`)
       .then(res => res.json())
       .then(data => {
         if (!data.error) {
@@ -450,6 +474,11 @@ function App() {
     socket.emit('joinHouse', houseId);
 
     socket.on('listasUpdated', (listas) => setHouseLists(listas));
+
+    // El servidor rechaza la conexión en tiempo real si el token no vale
+    socket.on('connect_error', (err) => {
+      if (err.message === 'Token inválido o expirado') sesionCaducada();
+    });
 
     socket.on('connect', () => {
       const colaOffline = JSON.parse(localStorage.getItem('colaSincronizacion') || '[]');
@@ -476,6 +505,7 @@ function App() {
       socket.off('appUpdated')
       socket.off('menuUpdated')
       socket.off('listasUpdated')
+      socket.off('connect_error')
     }
   }, [houseId]);
 
@@ -637,9 +667,8 @@ useEffect(() => {
   const abrirAdministracion = async () => {
     try {
       console.log("Intentando abrir administración para la casa:", houseId);
-      const res = await fetch(`/api/houses/${houseId}/users`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const res = await fetchConToken(`/api/houses/${houseId}/users`);
+      if (res.status === 401) return;
       const data = await res.json();
       console.log("Respuesta del servidor:", data);
       
@@ -659,11 +688,9 @@ useEffect(() => {
   const abandonarCasa = async () => {
     if (!window.confirm("¿Seguro que quieres abandonar esta casa? Perderás el acceso.")) return;
     try {
-      await fetch(`/api/houses/${houseId}/leave`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      window.location.reload(); 
+      const res = await fetchConToken(`/api/houses/${houseId}/leave`, { method: 'POST' });
+      if (res.status === 401) return;
+      window.location.reload();
     } catch (error) {
       console.error("Error al abandonar:", error);
     }
@@ -672,10 +699,8 @@ useEffect(() => {
   const expulsarUsuario = async (targetId: string, nombre: string) => {
     if (!window.confirm(`¿Seguro que quieres expulsar a ${nombre}?`)) return;
     try {
-      await fetch(`/api/houses/${houseId}/users/${targetId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const res = await fetchConToken(`/api/houses/${houseId}/users/${targetId}`, { method: 'DELETE' });
+      if (res.status === 401) return;
       setHouseMembers(prev => prev.filter(m => m.id !== targetId));
     } catch (error) {
       console.error("Error al expulsar:", error);
@@ -685,10 +710,8 @@ useEffect(() => {
   const eliminarCasa = async () => {
     if (!window.confirm("¡ATENCIÓN! ¿Seguro que quieres borrar la casa entera y todas sus listas? Esta acción no se puede deshacer.")) return;
     try {
-      await fetch(`/api/houses/${houseId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const res = await fetchConToken(`/api/houses/${houseId}`, { method: 'DELETE' });
+      if (res.status === 401) return;
       window.location.reload();
     } catch (error) {
       console.error("Error al eliminar casa:", error);
@@ -701,14 +724,12 @@ useEffect(() => {
       const endpoint = addHouseMode === 'crear' ? '/api/houses' : '/api/houses/join';
       const payload = addHouseMode === 'crear' ? { name: newHouseInput } : { inviteCode: newHouseInput };
 
-      const res = await fetch(endpoint, {
+      const res = await fetchConToken(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      if (res.status === 401) return;
 
       const data = await res.json();
       if (res.ok && !data.error) {
@@ -975,14 +996,7 @@ useEffect(() => {
 
                   {/* Cerrar Sesión */}
                   <button 
-                    onClick={() => {
-                      socket.disconnect();
-                      localStorage.clear();
-                      setCurrentUser(null);
-                      setCurrentUserId(null);
-                      setHouseId(null);
-                      setUserHouses([]);
-                    }}
+                    onClick={cerrarSesion}
                     style={{ background: '#fff0f0', border: 'none', padding: '10px', borderRadius: '10px', textAlign: 'center', cursor: 'pointer', color: '#ff4d4f', fontWeight: 'bold', fontSize: '15px', marginTop: '5px' }}
                   >
                     🚪 Cerrar sesión
@@ -1049,7 +1063,7 @@ useEffect(() => {
                   <button onClick={() => { setIsMenuOpen(false); compartirCasa(); }} style={{ background: 'transparent', border: 'none', padding: '8px 0', textAlign: 'left', cursor: 'pointer', fontSize: '15px', fontWeight: '600', color: '#007bff', display: 'flex', gap: '10px', alignItems: 'center' }}>🔗 Compartir invitación</button>
                   <button onClick={() => { setIsMenuOpen(false); abrirAdministracion(); }} style={{ background: 'transparent', border: 'none', padding: '8px 0', textAlign: 'left', cursor: 'pointer', fontSize: '15px', fontWeight: '600', color: '#333', display: 'flex', gap: '10px', alignItems: 'center' }}>⚙️ Administrar Casa</button>
                   <button onClick={() => { setIsMenuOpen(false); setIsSuggestionOpen(true); }} style={{ background: 'transparent', border: 'none', padding: '8px 0', textAlign: 'left', cursor: 'pointer', fontSize: '15px', fontWeight: '600', color: '#333', display: 'flex', gap: '10px', alignItems: 'center' }}>💡 Enviar sugerencia</button>
-                  <button onClick={() => { socket.disconnect(); localStorage.clear(); setCurrentUser(null); setCurrentUserId(null); setHouseId(null); setUserHouses([]); }} style={{ background: '#fff0f0', border: 'none', padding: '10px', borderRadius: '10px', textAlign: 'center', cursor: 'pointer', color: '#ff4d4f', fontWeight: 'bold', fontSize: '15px', marginTop: '5px' }}>🚪 Cerrar sesión</button>
+                  <button onClick={cerrarSesion} style={{ background: '#fff0f0', border: 'none', padding: '10px', borderRadius: '10px', textAlign: 'center', cursor: 'pointer', color: '#ff4d4f', fontWeight: 'bold', fontSize: '15px', marginTop: '5px' }}>🚪 Cerrar sesión</button>
                 </div>
               )}
             </div>
