@@ -1,5 +1,6 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from './config.js';
 
 // El token ya solo contiene el userId
 export interface AuthRequest extends Request {
@@ -23,7 +24,7 @@ export const verificarToken = (req: AuthRequest, res: Response, next: NextFuncti
     }
 
     // Verificamos y extraemos solo el userId
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'clave_secreta_de_desarrollo') as { userId: string };
+    const payload = jwt.verify(token, JWT_SECRET) as { userId: string };
     
     req.user = payload;
     next();

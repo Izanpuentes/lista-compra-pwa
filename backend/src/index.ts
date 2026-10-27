@@ -11,6 +11,7 @@ import authRoutes from './auth.routes.js';
 import { enviarEmail } from './email.service.js';
 import { verificarToken, type AuthRequest } from './auth.middleware.js'; // o la ruta donde lo hayas guardado
 import jwt from 'jsonwebtoken';
+import { JWT_SECRET, soloAdministrador, escaparHtml } from './config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -82,7 +83,7 @@ app.get('/api/recetas', async (req, res) => {
 });
 
 // --- RUTA PARA FORZAR ACTUALIZACIÓN EN LOS MÓVILES ---
-app.get('/api/trigger-update', (req, res) => {
+app.get('/api/trigger-update', soloAdministrador, (req, res) => {
   // io.emit envía el mensaje a TODOS los usuarios conectados sin excepción
   io.emit('appUpdated', { message: 'Nueva versión disponible' });
   res.send('✅ Notificación de actualización enviada a todos los dispositivos conectados de la familia.');
@@ -97,9 +98,12 @@ app.use('/api/auth', authRoutes);
 app.get('/api/houses/:houseId/users', verificarToken, async (req: AuthRequest, res: Response) => {
   try {
     const houseId = req.params.houseId as string; // Fijamos el tipo explícitamente a string
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Usuario no autenticado' });
 
-    const house = await prisma.house.findUnique({
-      where: { id: houseId },
+    // Solo los miembros de la casa pueden ver quién más pertenece a ella
+    const house = await prisma.house.findFirst({
+      where: { id: houseId, users: { some: { id: userId } } },
       // Cambiamos 'nombre' por 'name' que es como está definido en tu base de datos
       include: { users: { select: { id: true, name: true, email: true } } } 
     });
@@ -229,7 +233,7 @@ app.post('/api/houses/join', verificarToken, async (req: AuthRequest, res: Respo
 });
 
 // --- RUTA TEMPORAL PARA RESTAURAR RECETAS ---
-app.get('/api/restaurar-recetas', async (req, res) => {
+app.get('/api/restaurar-recetas', soloAdministrador, async (req, res) => {
   try {
     // 1. Limpiamos la base de datos
     await prisma.ingrediente.deleteMany();
@@ -846,7 +850,7 @@ io.use((socket, next) => {
 
   try {
     // El payload ya solo tiene userId
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'clave_secreta_de_desarrollo') as { userId: string };
+    const payload = jwt.verify(token, JWT_SECRET) as { userId: string };
     
     (socket as any).user = payload;
     next();
@@ -855,12 +859,31 @@ io.use((socket, next) => {
   }
 });
 
+// ¿Pertenece este usuario a esta casa?
+const esMiembro = async (userId: string | undefined, houseId: unknown): Promise<boolean> => {
+  if (!userId || typeof houseId !== 'string') return false;
+  const casa = await prisma.house.findFirst({
+    where: { id: houseId, users: { some: { id: userId } } },
+    select: { id: true }
+  });
+  return casa !== null;
+};
+
 io.on('connection', (socket) => {
   console.log(`Un usuario se ha conectado: ${socket.id}`);
+  const userId: string | undefined = (socket as any).user?.userId;
+
+  // Solo se puede actuar sobre una casa si el socket se unió a ella tras comprobar que el usuario es miembro
+  const puedeUsarCasa = (houseId: unknown): houseId is string =>
+    typeof houseId === 'string' && socket.rooms.has(houseId);
 
   socket.on('joinHouse', async (houseId) => {
-    socket.join(houseId);
     try {
+      if (!(await esMiembro(userId, houseId))) {
+        socket.emit('errorPermiso', { message: 'No perteneces a esta casa' });
+        return;
+      }
+      socket.join(houseId);
       const casa = await prisma.house.findUnique({
         where: { id: houseId },
         select: { menuSemanal: true, listas: true } // Pedimos también las listas
@@ -878,8 +901,9 @@ io.on('connection', (socket) => {
   // NUEVO: Escuchar cuando alguien cambia el menú y avisar al resto
   // Escuchar cuando alguien cambia el menú y avisar al resto
   socket.on('updateMenu', async (data) => {
-    const { houseId, menu } = data;
-    
+    const { houseId, menu } = data ?? {};
+    if (!puedeUsarCasa(houseId)) return;
+
     try {
       // 1. Guardamos el menú en piedra en la base de datos
       await prisma.house.update({
@@ -897,10 +921,14 @@ io.on('connection', (socket) => {
 
   socket.on('toggle-item', async (data) => {
     try {
-      const updatedItem = await prisma.item.update({
-        where: { id: data.itemId },
-        data: { comprado: data.comprado }
+      if (!puedeUsarCasa(data?.houseId)) return;
+      // El producto tiene que ser de esa misma casa
+      const { count } = await prisma.item.updateMany({
+        where: { id: data.itemId, houseId: data.houseId },
+        data: { comprado: Boolean(data.comprado) }
       });
+      if (count === 0) return;
+      const updatedItem = await prisma.item.findUnique({ where: { id: data.itemId } });
       io.to(data.houseId).emit('item-toggled', updatedItem);
     } catch (error) {
       console.error("Error al cambiar estado del item:", error);
@@ -910,13 +938,14 @@ io.on('connection', (socket) => {
   socket.on('addItem', async (data) => {
     try {
       // Extraemos también el supermercado de los datos que envía React
-      const { name, houseId, addedById, supermercado, categoria, creador } = data;
-      
+      const { name, houseId, supermercado, categoria, creador } = data ?? {};
+      if (!puedeUsarCasa(houseId)) return;
+
       const newItem = await prisma.item.create({
         data: { 
           name, 
           houseId, 
-          addedById,
+          addedById: userId, // el autor es siempre el usuario de la sesión, no lo que diga el cliente
           supermercado,
           categoria,
           creador
@@ -931,8 +960,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('addList', async ({ houseId, newList }) => {
+  socket.on('addList', async ({ houseId, newList } = {} as any) => {
     try {
+      if (!puedeUsarCasa(houseId)) return;
       const casa = await prisma.house.findUnique({ where: { id: houseId } });
       if (casa) {
         // Transformamos por si hay datos antiguos y añadimos la nueva
@@ -947,8 +977,9 @@ io.on('connection', (socket) => {
     } catch (error) { console.error(error); }
   });
 
-  socket.on('deleteList', async ({ houseId, listName }) => {
+  socket.on('deleteList', async ({ houseId, listName } = {} as any) => {
     try {
+      if (!puedeUsarCasa(houseId)) return;
       const casa = await prisma.house.findUnique({ where: { id: houseId } });
       if (casa) {
         const listasActuales = Array.isArray(casa.listas) ? casa.listas.map((l: any) => typeof l === 'string' ? { nombre: l, icono: '🛒', color: '#e0f0ff' } : l) : [];
@@ -963,10 +994,13 @@ io.on('connection', (socket) => {
 
   socket.on('deleteItem', async (data) => {
     try {
-      const { itemId, houseId } = data;
-      await prisma.item.deleteMany({
-        where: { id: itemId }
+      const { itemId, houseId } = data ?? {};
+      if (!puedeUsarCasa(houseId)) return;
+      // Solo se borra si el producto es de esa casa
+      const { count } = await prisma.item.deleteMany({
+        where: { id: itemId, houseId }
       });
+      if (count === 0) return;
       io.to(houseId).emit('itemDeleted', itemId);
     } catch (error) {
       console.error("Error al borrar item por WebSocket:", error);
@@ -982,9 +1016,9 @@ socket.on('sendSuggestion', async (data) => {
   try {
     await enviarEmail({
       to: 'izanpuentes@gmail.com',
-      subject: `💡 Nueva sugerencia de ${data.creador}`,
-      html: `<p>${data.text}</p>`,
-      text: data.text
+      subject: `💡 Nueva sugerencia de ${String(data?.creador ?? 'Anónimo').slice(0, 80)}`,
+      html: `<p>${escaparHtml(data?.text)}</p>`,
+      text: String(data?.text ?? '')
     });
 
     console.log("✅ Correo de sugerencia enviado con éxito.");

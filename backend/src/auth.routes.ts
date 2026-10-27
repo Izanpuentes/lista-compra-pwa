@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import { enviarEmail } from './email.service.js';
+import { JWT_SECRET } from './config.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -34,7 +35,7 @@ router.post('/register', async (req, res) => {
 
     const token = jwt.sign(
       { userId: nuevoUsuario.id }, 
-      process.env.JWT_SECRET || 'clave_secreta_de_desarrollo', 
+      JWT_SECRET, 
       { expiresIn: '30d' }
     );
 
@@ -75,7 +76,7 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign(
       { userId: usuario.id }, 
-      process.env.JWT_SECRET || 'clave_secreta_de_desarrollo', 
+      JWT_SECRET, 
       { expiresIn: '30d' }
     );
 
